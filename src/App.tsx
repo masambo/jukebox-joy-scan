@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ManagerBarProvider } from "@/hooks/useManagerBar";
 import Index from "./pages/Index";
 import Demo from "./pages/Demo";
 import Auth from "./pages/Auth";
@@ -12,6 +13,10 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminBars from "./pages/admin/AdminBars";
 import AdminAlbums from "./pages/admin/AdminAlbums";
 import AdminUsers from "./pages/admin/AdminUsers";
+import ManagerDashboard from "./pages/manager/ManagerDashboard";
+import ManagerCustomize from "./pages/manager/ManagerCustomize";
+import ManagerAlbums from "./pages/manager/ManagerAlbums";
+import ManagerPlaylists from "./pages/manager/ManagerPlaylists";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,16 +28,22 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/demo" element={<Demo />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/bars" element={<ProtectedRoute requiredRole="admin"><AdminBars /></ProtectedRoute>} />
-            <Route path="/admin/albums" element={<ProtectedRoute requiredRole="admin"><AdminAlbums /></ProtectedRoute>} />
-            <Route path="/admin/users" element={<ProtectedRoute requiredRole="admin"><AdminUsers /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <ManagerBarProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/demo" element={<Demo />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
+              <Route path="/admin/bars" element={<ProtectedRoute requiredRole="admin"><AdminBars /></ProtectedRoute>} />
+              <Route path="/admin/albums" element={<ProtectedRoute requiredRole="admin"><AdminAlbums /></ProtectedRoute>} />
+              <Route path="/admin/users" element={<ProtectedRoute requiredRole="admin"><AdminUsers /></ProtectedRoute>} />
+              <Route path="/manager" element={<ProtectedRoute requiredRole="bar_manager"><ManagerDashboard /></ProtectedRoute>} />
+              <Route path="/manager/customize" element={<ProtectedRoute requiredRole="bar_manager"><ManagerCustomize /></ProtectedRoute>} />
+              <Route path="/manager/albums" element={<ProtectedRoute requiredRole="bar_manager"><ManagerAlbums /></ProtectedRoute>} />
+              <Route path="/manager/playlists" element={<ProtectedRoute requiredRole="bar_manager"><ManagerPlaylists /></ProtectedRoute>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ManagerBarProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
