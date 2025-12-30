@@ -7,9 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Camera, Loader2, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Camera, Loader2, Trash2, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface Album {
@@ -17,6 +18,7 @@ interface Album {
   title: string;
   artist: string | null;
   disk_number: number;
+  cover_url: string | null;
   genre: string | null;
   year: number | null;
 }
@@ -36,6 +38,13 @@ interface ScannedSong {
   artist?: string;
 }
 
+interface ScannedAlbumInfo {
+  title?: string;
+  artist?: string;
+  year?: number;
+  genre?: string;
+}
+
 export default function ManagerAlbums() {
   const { bar, loading: barLoading } = useManagerBar();
   const [albums, setAlbums] = useState<Album[]>([]);
@@ -45,12 +54,14 @@ export default function ManagerAlbums() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scannedSongs, setScannedSongs] = useState<ScannedSong[]>([]);
+  const [scannedAlbumInfo, setScannedAlbumInfo] = useState<ScannedAlbumInfo | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     title: '',
     artist: '',
     disk_number: 1,
+    cover_url: '',
     genre: '',
     year: new Date().getFullYear(),
   });
@@ -114,15 +125,35 @@ export default function ManagerAlbums() {
       reader.onload = async () => {
         const base64 = reader.result as string;
         
+        // Use enhanced scanning with metadata extraction
         const response = await supabase.functions.invoke('scan-album', {
-          body: { imageBase64: base64 },
+          body: { imageBase64: base64, extractMetadata: true },
         });
 
         if (response.error) {
           toast.error(response.error.message || 'Failed to scan image');
-        } else if (response.data.songs) {
-          setScannedSongs(response.data.songs);
-          toast.success(`Found ${response.data.songs.length} songs!`);
+        } else {
+          // Handle album metadata
+          if (response.data.album) {
+            setScannedAlbumInfo(response.data.album);
+            // Auto-fill form with detected info
+            setFormData(prev => ({
+              ...prev,
+              title: response.data.album.title || prev.title,
+              artist: response.data.album.artist || prev.artist,
+              genre: response.data.album.genre || prev.genre,
+              year: response.data.album.year || prev.year,
+            }));
+            toast.success(`Detected: "${response.data.album.title}" by ${response.data.album.artist}`);
+          }
+          
+          // Handle songs
+          if (response.data.songs && response.data.songs.length > 0) {
+            setScannedSongs(response.data.songs);
+            toast.success(`Found ${response.data.songs.length} songs!`);
+          } else if (!response.data.album) {
+            toast.info('Could not detect album info or songs from image');
+          }
         }
         setScanning(false);
       };
@@ -144,6 +175,7 @@ export default function ManagerAlbums() {
         title: formData.title,
         artist: formData.artist || null,
         disk_number: formData.disk_number,
+        cover_url: formData.cover_url || null,
         genre: formData.genre || null,
         year: formData.year || null,
       }])
@@ -173,10 +205,12 @@ export default function ManagerAlbums() {
     toast.success('Album created successfully');
     setDialogOpen(false);
     setScannedSongs([]);
+    setScannedAlbumInfo(null);
     setFormData({
       title: '',
       artist: '',
       disk_number: 1,
+      cover_url: '',
       genre: '',
       year: new Date().getFullYear(),
     });
@@ -236,23 +270,85 @@ export default function ManagerAlbums() {
                 <DialogTitle>Add New Album</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* AI Scanner Section - Moved to top for better UX */}
+                <Card className="bg-primary/5 border-primary/20">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      AI Album Scanner
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Take a photo of the album cover or back cover. AI will detect the album title, artist, and all songs automatically.
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleScanImage}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={scanning}
+                      className="w-full"
+                    >
+                      {scanning ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Scanning...
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="h-4 w-4 mr-2" />
+                          Scan Album Cover
+                        </>
+                      )}
+                    </Button>
+                    {scannedAlbumInfo && (
+                      <div className="mt-3 p-2 bg-primary/10 rounded-lg text-xs">
+                        <p className="font-medium text-primary">Detected Album Info:</p>
+                        <p>Title: {scannedAlbumInfo.title || 'Not detected'}</p>
+                        <p>Artist: {scannedAlbumInfo.artist || 'Not detected'}</p>
+                        {scannedAlbumInfo.genre && <p>Genre: {scannedAlbumInfo.genre}</p>}
+                        {scannedAlbumInfo.year && <p>Year: {scannedAlbumInfo.year}</p>}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="title">Album Title</Label>
-                    <Input
-                      id="title"
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      required
+                    <Label>Album Cover</Label>
+                    <ImageUpload
+                      bucket="album-covers"
+                      folder={bar.id}
+                      currentUrl={formData.cover_url}
+                      onUpload={(url) => setFormData({ ...formData, cover_url: url })}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="artist">Artist</Label>
-                    <Input
-                      id="artist"
-                      value={formData.artist}
-                      onChange={(e) => setFormData({ ...formData, artist: e.target.value })}
-                    />
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Album Title</Label>
+                      <Input
+                        id="title"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="artist">Artist</Label>
+                      <Input
+                        id="artist"
+                        value={formData.artist}
+                        onChange={(e) => setFormData({ ...formData, artist: e.target.value })}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -286,47 +382,6 @@ export default function ManagerAlbums() {
                     />
                   </div>
                 </div>
-
-                <Card className="bg-primary/5 border-primary/20">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Camera className="h-4 w-4" />
-                      AI Track Scanner
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Take a photo of the album's track listing and AI will extract all songs automatically.
-                    </p>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleScanImage}
-                      className="hidden"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={scanning}
-                      className="w-full"
-                    >
-                      {scanning ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Scanning...
-                        </>
-                      ) : (
-                        <>
-                          <Camera className="h-4 w-4 mr-2" />
-                          Scan Album Image
-                        </>
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
 
                 {scannedSongs.length > 0 && (
                   <div className="space-y-2">
