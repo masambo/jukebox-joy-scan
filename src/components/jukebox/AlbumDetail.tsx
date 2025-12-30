@@ -1,0 +1,60 @@
+import { Album } from "@/data/mockData";
+import { ArrowLeft, Disc } from "lucide-react";
+import SongRow from "./SongRow";
+import { NeonButton } from "@/components/ui/NeonButton";
+
+interface AlbumDetailProps {
+  album: Album;
+  onBack: () => void;
+}
+
+const AlbumDetail = ({ album, onBack }: AlbumDetailProps) => {
+  return (
+    <div>
+      {/* Back Button */}
+      <NeonButton variant="ghost" size="sm" onClick={onBack} className="mb-6">
+        <ArrowLeft className="w-4 h-4" />
+        Back to Albums
+      </NeonButton>
+
+      {/* Album Header */}
+      <div className="flex flex-col md:flex-row gap-6 mb-8">
+        <div className="w-full md:w-48 shrink-0">
+          <div className="relative aspect-square rounded-2xl overflow-hidden shadow-[0_0_40px_hsl(280_100%_65%/0.3)]">
+            <img
+              src={album.cover}
+              alt={album.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </div>
+
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <Disc className="w-5 h-5 text-primary" />
+            <span className="text-sm font-medium text-primary">Disk {album.diskNumber}</span>
+          </div>
+          <h2 className="text-3xl md:text-4xl font-display font-bold mb-2">{album.title}</h2>
+          <p className="text-xl text-muted-foreground mb-4">{album.artist}</p>
+          <div className="flex items-center gap-3">
+            <span className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm font-medium">
+              {album.genre}
+            </span>
+            <span className="text-muted-foreground">{album.year}</span>
+            <span className="text-muted-foreground">•</span>
+            <span className="text-muted-foreground">{album.songs.length} tracks</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Track List */}
+      <div className="space-y-2">
+        {album.songs.map((song) => (
+          <SongRow key={song.id} song={song} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default AlbumDetail;
