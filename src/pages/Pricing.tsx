@@ -106,8 +106,8 @@ export default function Pricing() {
                   <div className="text-center mb-6">
                     {tier.price !== null ? (
                       <>
-                        <span className="text-4xl font-bold">${tier.price}</span>
-                        <span className="text-muted-foreground">/month</span>
+                        <span className="text-4xl font-bold">N${tier.price}</span>
+                        <span className="text-muted-foreground text-sm block mt-1">once-off</span>
                       </>
                     ) : (
                       <span className="text-3xl font-bold">Contact Us</span>
@@ -142,7 +142,7 @@ export default function Pricing() {
 
           <div className="text-center mt-12">
             <p className="text-muted-foreground">
-              All prices are in USD. Contact us for annual billing discounts.
+              All prices are in Namibian Dollars (N$). Once-off payment, no recurring fees.
             </p>
           </div>
         </div>
