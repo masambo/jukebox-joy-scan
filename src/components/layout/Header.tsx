@@ -38,12 +38,16 @@ const Header = () => {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-4">
-            <NeonButton variant="ghost" size="sm">
-              Login
-            </NeonButton>
-            <NeonButton variant="hero" size="sm">
-              Get Started
-            </NeonButton>
+            <Link to="/auth">
+              <NeonButton variant="ghost" size="sm">
+                Login
+              </NeonButton>
+            </Link>
+            <Link to="/pricing">
+              <NeonButton variant="hero" size="sm">
+                Get Started
+              </NeonButton>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -89,12 +93,16 @@ const Header = () => {
                 Pricing
               </Link>
               <div className="flex gap-3 pt-4 border-t border-border/30">
-                <NeonButton variant="ghost" size="sm" className="flex-1">
-                  Login
-                </NeonButton>
-                <NeonButton variant="hero" size="sm" className="flex-1">
-                  Get Started
-                </NeonButton>
+                <Link to="/auth" className="flex-1" onClick={() => setIsMenuOpen(false)}>
+                  <NeonButton variant="ghost" size="sm" className="w-full">
+                    Login
+                  </NeonButton>
+                </Link>
+                <Link to="/pricing" className="flex-1" onClick={() => setIsMenuOpen(false)}>
+                  <NeonButton variant="hero" size="sm" className="w-full">
+                    Get Started
+                  </NeonButton>
+                </Link>
               </div>
             </nav>
           </div>
