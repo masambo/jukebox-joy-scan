@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Camera, Loader2, Trash2, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
+import { Plus, Camera, Loader2, Trash2, ChevronDown, ChevronRight, Sparkles, Pencil, Save, X } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface Album {
@@ -65,6 +65,12 @@ export default function ManagerAlbums() {
     genre: '',
     year: new Date().getFullYear(),
   });
+
+  // Song editing state
+  const [editingSong, setEditingSong] = useState<string | null>(null);
+  const [songForm, setSongForm] = useState({ title: '', track_number: 1, duration: '' });
+  const [addingSongToAlbum, setAddingSongToAlbum] = useState<string | null>(null);
+  const [newSongForm, setNewSongForm] = useState({ title: '', track_number: 1, duration: '' });
 
   useEffect(() => {
     if (bar) {
@@ -227,6 +233,89 @@ export default function ManagerAlbums() {
       toast.success('Album deleted');
       fetchAlbums();
     }
+  };
+
+  // Song management functions
+  const handleEditSong = (song: Song) => {
+    setEditingSong(song.id);
+    setSongForm({ title: song.title, track_number: song.track_number, duration: song.duration || '' });
+  };
+
+  const handleSaveSong = async (songId: string) => {
+    const { error } = await supabase
+      .from('songs')
+      .update({
+        title: songForm.title,
+        track_number: songForm.track_number,
+        duration: songForm.duration || null,
+      })
+      .eq('id', songId);
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Song updated');
+      setEditingSong(null);
+      // Refresh songs for the album
+      const song = Object.values(songs).flat().find(s => s.id === songId);
+      if (song) {
+        setSongs(prev => ({
+          ...prev,
+          [song.album_id]: prev[song.album_id].map(s => 
+            s.id === songId ? { ...s, ...songForm, duration: songForm.duration || null } : s
+          ),
+        }));
+      }
+    }
+  };
+
+  const handleDeleteSong = async (songId: string, albumId: string) => {
+    if (!confirm('Delete this song?')) return;
+
+    const { error } = await supabase.from('songs').delete().eq('id', songId);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Song deleted');
+      setSongs(prev => ({
+        ...prev,
+        [albumId]: prev[albumId].filter(s => s.id !== songId),
+      }));
+    }
+  };
+
+  const handleAddSong = async (albumId: string) => {
+    const album = albums.find(a => a.id === albumId);
+    const { data, error } = await supabase
+      .from('songs')
+      .insert([{
+        album_id: albumId,
+        title: newSongForm.title,
+        track_number: newSongForm.track_number,
+        duration: newSongForm.duration || null,
+        artist: album?.artist || null,
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Song added');
+      setSongs(prev => ({
+        ...prev,
+        [albumId]: [...(prev[albumId] || []), data].sort((a, b) => a.track_number - b.track_number),
+      }));
+      setAddingSongToAlbum(null);
+      setNewSongForm({ title: '', track_number: 1, duration: '' });
+    }
+  };
+
+  const startAddingSong = (albumId: string) => {
+    const albumSongs = songs[albumId] || [];
+    const nextTrack = albumSongs.length > 0 ? Math.max(...albumSongs.map(s => s.track_number)) + 1 : 1;
+    setNewSongForm({ title: '', track_number: nextTrack, duration: '' });
+    setAddingSongToAlbum(albumId);
   };
 
   if (barLoading || loading) {
@@ -465,30 +554,157 @@ export default function ManagerAlbums() {
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="border-t border-border">
-                      {songs[album.id]?.length ? (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="w-16">Track</TableHead>
-                              <TableHead>Title</TableHead>
-                              <TableHead className="w-24">Duration</TableHead>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-16">Track</TableHead>
+                            <TableHead>Title</TableHead>
+                            <TableHead className="w-24">Duration</TableHead>
+                            <TableHead className="w-24">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {songs[album.id]?.map((song) => (
+                            <TableRow key={song.id}>
+                              {editingSong === song.id ? (
+                                <>
+                                  <TableCell>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      value={songForm.track_number}
+                                      onChange={(e) => setSongForm({ ...songForm, track_number: parseInt(e.target.value) || 1 })}
+                                      className="w-14 h-8"
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Input
+                                      value={songForm.title}
+                                      onChange={(e) => setSongForm({ ...songForm, title: e.target.value })}
+                                      className="h-8"
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Input
+                                      value={songForm.duration}
+                                      onChange={(e) => setSongForm({ ...songForm, duration: e.target.value })}
+                                      placeholder="3:45"
+                                      className="w-16 h-8"
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => handleSaveSong(song.id)}
+                                      >
+                                        <Save className="h-4 w-4 text-primary" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => setEditingSong(null)}
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </>
+                              ) : (
+                                <>
+                                  <TableCell className="font-medium">{song.track_number}</TableCell>
+                                  <TableCell>{song.title}</TableCell>
+                                  <TableCell className="text-muted-foreground">{song.duration || '-'}</TableCell>
+                                  <TableCell>
+                                    <div className="flex gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => handleEditSong(song)}
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8"
+                                        onClick={() => handleDeleteSong(song.id, album.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </>
+                              )}
                             </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {songs[album.id].map((song) => (
-                              <TableRow key={song.id}>
-                                <TableCell className="font-medium">{song.track_number}</TableCell>
-                                <TableCell>{song.title}</TableCell>
-                                <TableCell className="text-muted-foreground">{song.duration || '-'}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      ) : (
-                        <p className="p-4 text-sm text-muted-foreground text-center">
-                          No songs in this album
-                        </p>
-                      )}
+                          ))}
+                          {addingSongToAlbum === album.id && (
+                            <TableRow>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={newSongForm.track_number}
+                                  onChange={(e) => setNewSongForm({ ...newSongForm, track_number: parseInt(e.target.value) || 1 })}
+                                  className="w-14 h-8"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={newSongForm.title}
+                                  onChange={(e) => setNewSongForm({ ...newSongForm, title: e.target.value })}
+                                  placeholder="Song title"
+                                  className="h-8"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={newSongForm.duration}
+                                  onChange={(e) => setNewSongForm({ ...newSongForm, duration: e.target.value })}
+                                  placeholder="3:45"
+                                  className="w-16 h-8"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => handleAddSong(album.id)}
+                                    disabled={!newSongForm.title}
+                                  >
+                                    <Save className="h-4 w-4 text-primary" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => setAddingSongToAlbum(null)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                      <div className="p-3 border-t border-border">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => startAddingSong(album.id)}
+                          disabled={addingSongToAlbum === album.id}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Song
+                        </Button>
+                      </div>
                     </div>
                   </CollapsibleContent>
                 </Card>
