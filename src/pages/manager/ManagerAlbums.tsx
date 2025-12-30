@@ -72,6 +72,17 @@ export default function ManagerAlbums() {
   const [addingSongToAlbum, setAddingSongToAlbum] = useState<string | null>(null);
   const [newSongForm, setNewSongForm] = useState({ title: '', track_number: 1, duration: '' });
 
+  // Album editing state
+  const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
+  const [editAlbumForm, setEditAlbumForm] = useState({
+    title: '',
+    artist: '',
+    disk_number: 1,
+    cover_url: '',
+    genre: '',
+    year: new Date().getFullYear(),
+  });
+
   useEffect(() => {
     if (bar) {
       fetchAlbums();
@@ -318,6 +329,43 @@ export default function ManagerAlbums() {
     setAddingSongToAlbum(albumId);
   };
 
+  // Album editing functions
+  const handleEditAlbum = (album: Album) => {
+    setEditingAlbum(album);
+    setEditAlbumForm({
+      title: album.title,
+      artist: album.artist || '',
+      disk_number: album.disk_number,
+      cover_url: album.cover_url || '',
+      genre: album.genre || '',
+      year: album.year || new Date().getFullYear(),
+    });
+  };
+
+  const handleSaveAlbum = async () => {
+    if (!editingAlbum) return;
+
+    const { error } = await supabase
+      .from('albums')
+      .update({
+        title: editAlbumForm.title,
+        artist: editAlbumForm.artist || null,
+        disk_number: editAlbumForm.disk_number,
+        cover_url: editAlbumForm.cover_url || null,
+        genre: editAlbumForm.genre || null,
+        year: editAlbumForm.year || null,
+      })
+      .eq('id', editingAlbum.id);
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Album updated');
+      setEditingAlbum(null);
+      fetchAlbums();
+    }
+  };
+
   if (barLoading || loading) {
     return (
       <ManagerLayout>
@@ -539,6 +587,16 @@ export default function ManagerAlbums() {
                           size="icon"
                           onClick={(e) => {
                             e.stopPropagation();
+                            handleEditAlbum(album);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleDelete(album.id);
                           }}
                         >
@@ -712,6 +770,88 @@ export default function ManagerAlbums() {
             ))}
           </div>
         )}
+
+        {/* Edit Album Dialog */}
+        <Dialog open={!!editingAlbum} onOpenChange={(open) => !open && setEditingAlbum(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Album</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Album Cover</Label>
+                  <ImageUpload
+                    bucket="album-covers"
+                    folder={bar.id}
+                    currentUrl={editAlbumForm.cover_url}
+                    onUpload={(url) => setEditAlbumForm({ ...editAlbumForm, cover_url: url })}
+                  />
+                </div>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-title">Album Title</Label>
+                    <Input
+                      id="edit-title"
+                      value={editAlbumForm.title}
+                      onChange={(e) => setEditAlbumForm({ ...editAlbumForm, title: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-artist">Artist</Label>
+                    <Input
+                      id="edit-artist"
+                      value={editAlbumForm.artist}
+                      onChange={(e) => setEditAlbumForm({ ...editAlbumForm, artist: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-disk_number">Disk Number</Label>
+                  <Input
+                    id="edit-disk_number"
+                    type="number"
+                    min="1"
+                    value={editAlbumForm.disk_number}
+                    onChange={(e) => setEditAlbumForm({ ...editAlbumForm, disk_number: parseInt(e.target.value) || 1 })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-genre">Genre</Label>
+                  <Input
+                    id="edit-genre"
+                    value={editAlbumForm.genre}
+                    onChange={(e) => setEditAlbumForm({ ...editAlbumForm, genre: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-year">Year</Label>
+                  <Input
+                    id="edit-year"
+                    type="number"
+                    value={editAlbumForm.year}
+                    onChange={(e) => setEditAlbumForm({ ...editAlbumForm, year: parseInt(e.target.value) })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button onClick={handleSaveAlbum} className="flex-1">
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </Button>
+                <Button variant="outline" onClick={() => setEditingAlbum(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </ManagerLayout>
   );
