@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, Save, Palette } from 'lucide-react';
@@ -15,6 +16,7 @@ export default function ManagerCustomize() {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     description: '',
+    logo_url: '',
     primary_color: '#8B5CF6',
     secondary_color: '#D946EF',
   });
@@ -23,6 +25,7 @@ export default function ManagerCustomize() {
     if (bar) {
       setFormData({
         description: bar.description || '',
+        logo_url: bar.logo_url || '',
         primary_color: bar.primary_color || '#8B5CF6',
         secondary_color: bar.secondary_color || '#D946EF',
       });
@@ -38,6 +41,7 @@ export default function ManagerCustomize() {
       .from('bars')
       .update({
         description: formData.description,
+        logo_url: formData.logo_url || null,
         primary_color: formData.primary_color,
         secondary_color: formData.secondary_color,
       })
@@ -97,6 +101,15 @@ export default function ManagerCustomize() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Bar Logo</Label>
+                  <ImageUpload
+                    bucket="bar-assets"
+                    folder={bar.id}
+                    currentUrl={formData.logo_url}
+                    onUpload={(url) => setFormData({ ...formData, logo_url: url })}
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
                   <Textarea
@@ -179,6 +192,20 @@ export default function ManagerCustomize() {
                   borderStyle: 'solid'
                 }}
               >
+                {formData.logo_url ? (
+                  <img 
+                    src={formData.logo_url} 
+                    alt={bar.name} 
+                    className="w-20 h-20 mx-auto rounded-lg object-cover mb-4"
+                  />
+                ) : (
+                  <div 
+                    className="w-20 h-20 mx-auto rounded-lg flex items-center justify-center text-3xl font-bold mb-4"
+                    style={{ backgroundColor: formData.primary_color + '30', color: formData.primary_color }}
+                  >
+                    {bar.name.charAt(0)}
+                  </div>
+                )}
                 <h3 
                   className="text-2xl font-heading font-bold mb-2"
                   style={{ color: formData.primary_color }}

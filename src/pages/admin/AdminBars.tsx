@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, QrCode } from 'lucide-react';
@@ -32,6 +33,7 @@ export default function AdminBars() {
     slug: '',
     description: '',
     address: '',
+    logo_url: '',
     primary_color: '#8B5CF6',
     secondary_color: '#D946EF',
   });
@@ -58,11 +60,20 @@ export default function AdminBars() {
     e.preventDefault();
     
     const slug = formData.slug || generateSlug(formData.name);
+    const dataToSave = {
+      name: formData.name,
+      slug,
+      description: formData.description || null,
+      address: formData.address || null,
+      logo_url: formData.logo_url || null,
+      primary_color: formData.primary_color,
+      secondary_color: formData.secondary_color,
+    };
     
     if (editingBar) {
       const { error } = await supabase
         .from('bars')
-        .update({ ...formData, slug })
+        .update(dataToSave)
         .eq('id', editingBar.id);
       
       if (error) {
@@ -75,7 +86,7 @@ export default function AdminBars() {
     } else {
       const { error } = await supabase
         .from('bars')
-        .insert([{ ...formData, slug }]);
+        .insert([dataToSave]);
       
       if (error) {
         toast.error(error.message);
@@ -94,6 +105,7 @@ export default function AdminBars() {
       slug: bar.slug,
       description: bar.description || '',
       address: bar.address || '',
+      logo_url: bar.logo_url || '',
       primary_color: bar.primary_color || '#8B5CF6',
       secondary_color: bar.secondary_color || '#D946EF',
     });
@@ -119,6 +131,7 @@ export default function AdminBars() {
       slug: '',
       description: '',
       address: '',
+      logo_url: '',
       primary_color: '#8B5CF6',
       secondary_color: '#D946EF',
     });
@@ -142,11 +155,20 @@ export default function AdminBars() {
                 Add Bar
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingBar ? 'Edit Bar' : 'Add New Bar'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Bar Logo</Label>
+                  <ImageUpload
+                    bucket="bar-assets"
+                    folder={editingBar?.id || 'new'}
+                    currentUrl={formData.logo_url}
+                    onUpload={(url) => setFormData({ ...formData, logo_url: url })}
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="name">Bar Name</Label>
                   <Input
@@ -237,7 +259,18 @@ export default function AdminBars() {
                 ) : (
                   bars.map((bar) => (
                     <TableRow key={bar.id}>
-                      <TableCell className="font-medium">{bar.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-3">
+                          {bar.logo_url ? (
+                            <img src={bar.logo_url} alt={bar.name} className="w-8 h-8 rounded object-cover" />
+                          ) : (
+                            <div className="w-8 h-8 rounded bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
+                              {bar.name.charAt(0)}
+                            </div>
+                          )}
+                          {bar.name}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{bar.slug}</TableCell>
                       <TableCell className="text-muted-foreground">{bar.address || '-'}</TableCell>
                       <TableCell>

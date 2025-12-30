@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Camera, Loader2, Trash2, Music2 } from 'lucide-react';
+import { Plus, Camera, Loader2, Trash2 } from 'lucide-react';
 
 interface Bar {
   id: string;
@@ -22,6 +23,7 @@ interface Album {
   title: string;
   artist: string | null;
   disk_number: number;
+  cover_url: string | null;
   genre: string | null;
   year: number | null;
   bars?: { name: string };
@@ -48,6 +50,7 @@ export default function AdminAlbums() {
     title: '',
     artist: '',
     disk_number: 1,
+    cover_url: '',
     genre: '',
     year: new Date().getFullYear(),
   });
@@ -118,6 +121,7 @@ export default function AdminAlbums() {
         title: formData.title,
         artist: formData.artist || null,
         disk_number: formData.disk_number,
+        cover_url: formData.cover_url || null,
         genre: formData.genre || null,
         year: formData.year || null,
       }])
@@ -153,6 +157,7 @@ export default function AdminAlbums() {
       title: '',
       artist: '',
       disk_number: 1,
+      cover_url: '',
       genre: '',
       year: new Date().getFullYear(),
     });
@@ -178,6 +183,7 @@ export default function AdminAlbums() {
       title: '',
       artist: '',
       disk_number: 1,
+      cover_url: '',
       genre: '',
       year: new Date().getFullYear(),
     });
@@ -201,23 +207,47 @@ export default function AdminAlbums() {
                 <DialogTitle>Add New Album</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Bar</Label>
-                  <Select
-                    value={formData.bar_id}
-                    onValueChange={(value) => setFormData({ ...formData, bar_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a bar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {bars.map((bar) => (
-                        <SelectItem key={bar.id} value={bar.id}>
-                          {bar.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Album Cover</Label>
+                    <ImageUpload
+                      bucket="album-covers"
+                      folder={formData.bar_id || 'temp'}
+                      currentUrl={formData.cover_url}
+                      onUpload={(url) => setFormData({ ...formData, cover_url: url })}
+                    />
+                  </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Bar</Label>
+                      <Select
+                        value={formData.bar_id}
+                        onValueChange={(value) => setFormData({ ...formData, bar_id: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a bar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {bars.map((bar) => (
+                            <SelectItem key={bar.id} value={bar.id}>
+                              {bar.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="disk_number">Disk Number</Label>
+                      <Input
+                        id="disk_number"
+                        type="number"
+                        min="1"
+                        value={formData.disk_number}
+                        onChange={(e) => setFormData({ ...formData, disk_number: parseInt(e.target.value) || 1 })}
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -241,17 +271,6 @@ export default function AdminAlbums() {
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="disk_number">Disk Number</Label>
-                    <Input
-                      id="disk_number"
-                      type="number"
-                      min="1"
-                      value={formData.disk_number}
-                      onChange={(e) => setFormData({ ...formData, disk_number: parseInt(e.target.value) || 1 })}
-                      required
-                    />
-                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="genre">Genre</Label>
                     <Input
@@ -353,7 +372,8 @@ export default function AdminAlbums() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-20">Disk #</TableHead>
+                  <TableHead className="w-20">Cover</TableHead>
+                  <TableHead className="w-16">Disk</TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead>Artist</TableHead>
                   <TableHead>Bar</TableHead>
@@ -364,13 +384,13 @@ export default function AdminAlbums() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={7} className="text-center py-8">
                       Loading...
                     </TableCell>
                   </TableRow>
                 ) : albums.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No albums yet. Add your first album!
                     </TableCell>
                   </TableRow>
@@ -378,7 +398,16 @@ export default function AdminAlbums() {
                   albums.map((album) => (
                     <TableRow key={album.id}>
                       <TableCell>
-                        <span className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-primary/20 text-primary font-bold">
+                        {album.cover_url ? (
+                          <img src={album.cover_url} alt={album.title} className="w-10 h-10 rounded object-cover" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                            <span className="text-xs text-muted-foreground">No img</span>
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded bg-primary/20 text-primary font-bold text-sm">
                           {album.disk_number}
                         </span>
                       </TableCell>
