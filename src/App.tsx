@@ -9,6 +9,7 @@ import { ManagerBarProvider } from "@/hooks/useManagerBar";
 import Index from "./pages/Index";
 import Demo from "./pages/Demo";
 import Auth from "./pages/Auth";
+import Pricing from "./pages/Pricing";
 import BarPage from "./pages/BarPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminBars from "./pages/admin/AdminBars";
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/demo" element={<Demo />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/pricing" element={<Pricing />} />
               <Route path="/bar/:slug" element={<BarPage />} />
               <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
               <Route path="/admin/bars" element={<ProtectedRoute requiredRole="admin"><AdminBars /></ProtectedRoute>} />
