@@ -1,6 +1,7 @@
 import { NeonButton } from "@/components/ui/NeonButton";
 import { QrCode, Music, Search, Sparkles } from "lucide-react";
-import heroImage from "@/assets/hero-jukebox.jpg";
+import { Link } from "react-router-dom";
+import heroImage from "@/assets/hero-jukebox-new.png";
 
 const HeroSection = () => {
   return (
@@ -40,13 +41,17 @@ const HeroSection = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            <NeonButton variant="hero" size="xl">
-              <QrCode className="w-5 h-5" />
-              Try Demo Jukebox
-            </NeonButton>
-            <NeonButton variant="glass" size="xl">
-              For Bar Owners
-            </NeonButton>
+            <Link to="/demo">
+              <NeonButton variant="hero" size="xl">
+                <QrCode className="w-5 h-5" />
+                Try Demo Jukebox
+              </NeonButton>
+            </Link>
+            <Link to="/pricing">
+              <NeonButton variant="glass" size="xl">
+                For Bar Owners
+              </NeonButton>
+            </Link>
           </div>
 
           {/* Features Preview */}
