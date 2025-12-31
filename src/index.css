@@ -17,16 +17,16 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 50% 10%;
 
-    --primary: 0 85% 55%;
+    --primary: 0 100% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 90% 55%;
+    --secondary: 220 100% 50%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 220 20% 90%;
     --muted-foreground: 220 20% 40%;
 
-    --accent: 220 90% 55%;
+    --accent: 220 100% 50%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -34,35 +34,35 @@
 
     --border: 220 20% 85%;
     --input: 220 20% 85%;
-    --ring: 0 85% 55%;
+    --ring: 0 100% 50%;
 
     --radius: 0.75rem;
 
     /* Neon glow colors */
-    --neon-red: 0 85% 55%;
-    --neon-blue: 220 90% 55%;
+    --neon-red: 0 100% 50%;
+    --neon-blue: 220 100% 50%;
     --neon-cyan: 200 100% 50%;
 
     /* Gradients */
-    --gradient-neon: linear-gradient(135deg, hsl(0 85% 55%), hsl(220 90% 55%));
+    --gradient-neon: linear-gradient(135deg, hsl(0 100% 50%), hsl(220 100% 50%));
     --gradient-hero: linear-gradient(180deg, hsl(220 50% 5%) 0%, hsl(0 60% 15%) 100%);
 
     /* Shadows */
-    --shadow-neon: 0 0 20px hsl(0 85% 55% / 0.5);
-    --shadow-neon-strong: 0 0 40px hsl(0 85% 55% / 0.7);
+    --shadow-neon: 0 0 20px hsl(0 100% 50% / 0.5);
+    --shadow-neon-strong: 0 0 40px hsl(0 100% 50% / 0.7);
     --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.1);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 220 50% 10%;
-    --sidebar-primary: 0 85% 55%;
+    --sidebar-primary: 0 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 90% 55%;
+    --sidebar-accent: 220 100% 50%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 220 20% 85%;
-    --sidebar-ring: 0 85% 55%;
+    --sidebar-ring: 0 100% 50%;
 
-    --chart-1: 0 85% 55%;
-    --chart-2: 220 90% 55%;
+    --chart-1: 0 100% 50%;
+    --chart-2: 220 100% 50%;
     --chart-3: 200 100% 50%;
     --chart-4: 180 100% 50%;
     --chart-5: 40 100% 50%;
@@ -81,16 +81,16 @@
     --popover: 220 40% 12%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 0 85% 55%;
+    --primary: 0 100% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 90% 55%;
+    --secondary: 220 100% 50%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 220 30% 20%;
     --muted-foreground: 220 15% 65%;
 
-    --accent: 220 90% 55%;
+    --accent: 220 100% 50%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -98,25 +98,25 @@
 
     --border: 220 30% 20%;
     --input: 220 30% 20%;
-    --ring: 0 85% 55%;
+    --ring: 0 100% 50%;
 
     --sidebar-background: 220 40% 8%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 0 85% 55%;
+    --sidebar-primary: 0 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 90% 55%;
+    --sidebar-accent: 220 100% 50%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 220 30% 20%;
-    --sidebar-ring: 0 85% 55%;
+    --sidebar-ring: 0 100% 50%;
 
-    --chart-1: 0 85% 60%;
-    --chart-2: 220 90% 60%;
+    --chart-1: 0 100% 50%;
+    --chart-2: 220 100% 50%;
     --chart-3: 200 100% 55%;
     --chart-4: 180 100% 55%;
     --chart-5: 40 100% 55%;
 
-    --shadow-neon: 0 0 30px hsl(0 85% 55% / 0.6);
-    --shadow-neon-strong: 0 0 60px hsl(0 85% 55% / 0.8);
+    --shadow-neon: 0 0 30px hsl(0 100% 50% / 0.6);
+    --shadow-neon-strong: 0 0 60px hsl(0 100% 50% / 0.8);
     --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.4);
   }
 }
@@ -138,15 +138,15 @@
 /* Custom utilities */
 @layer utilities {
   .text-glow {
-    text-shadow: 0 0 20px hsl(0 85% 55% / 0.8), 0 0 40px hsl(0 85% 55% / 0.4);
+    text-shadow: 0 0 20px hsl(0 100% 50% / 0.8), 0 0 40px hsl(0 100% 50% / 0.4);
   }
 
   .text-glow-accent {
-    text-shadow: 0 0 20px hsl(220 90% 55% / 0.8), 0 0 40px hsl(220 90% 55% / 0.4);
+    text-shadow: 0 0 20px hsl(220 100% 50% / 0.8), 0 0 40px hsl(220 100% 50% / 0.4);
   }
 
   .neon-border {
-    box-shadow: 0 0 15px hsl(0 85% 55% / 0.5), inset 0 0 15px hsl(0 85% 55% / 0.1);
+    box-shadow: 0 0 15px hsl(0 100% 50% / 0.5), inset 0 0 15px hsl(0 100% 50% / 0.1);
   }
 
   .neon-glow {
