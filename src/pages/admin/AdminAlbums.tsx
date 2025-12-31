@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Camera, Loader2, Trash2, Pencil } from 'lucide-react';
+import { Plus, Camera, Loader2, Trash2, Pencil, Music } from 'lucide-react';
 
 interface Bar {
   id: string;
@@ -36,6 +36,15 @@ interface ScannedSong {
   artist?: string;
 }
 
+interface Song {
+  id: string;
+  album_id: string;
+  title: string;
+  track_number: number;
+  artist: string | null;
+  duration: string | null;
+}
+
 export default function AdminAlbums() {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [bars, setBars] = useState<Bar[]>([]);
@@ -44,6 +53,16 @@ export default function AdminAlbums() {
   const [scanning, setScanning] = useState(false);
   const [scannedSongs, setScannedSongs] = useState<ScannedSong[]>([]);
   const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
+  const [songsDialogOpen, setSongsDialogOpen] = useState(false);
+  const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
+  const [songs, setSongs] = useState<Song[]>([]);
+  const [editingSong, setEditingSong] = useState<Song | null>(null);
+  const [songFormData, setSongFormData] = useState({
+    title: '',
+    track_number: 1,
+    artist: '',
+    duration: '',
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
@@ -224,6 +243,109 @@ export default function AdminAlbums() {
       year: new Date().getFullYear(),
     });
     setDialogOpen(true);
+  };
+
+  // Songs management
+  const openSongsDialog = async (album: Album) => {
+    setSelectedAlbum(album);
+    await fetchSongs(album.id);
+    setSongsDialogOpen(true);
+  };
+
+  const fetchSongs = async (albumId: string) => {
+    const { data, error } = await supabase
+      .from('songs')
+      .select('*')
+      .eq('album_id', albumId)
+      .order('track_number');
+    
+    if (error) {
+      toast.error('Failed to load songs');
+    } else {
+      setSongs(data || []);
+    }
+  };
+
+  const openNewSongForm = () => {
+    setEditingSong(null);
+    setSongFormData({
+      title: '',
+      track_number: songs.length + 1,
+      artist: selectedAlbum?.artist || '',
+      duration: '',
+    });
+  };
+
+  const handleEditSong = (song: Song) => {
+    setEditingSong(song);
+    setSongFormData({
+      title: song.title,
+      track_number: song.track_number,
+      artist: song.artist || '',
+      duration: song.duration || '',
+    });
+  };
+
+  const handleSaveSong = async () => {
+    if (!selectedAlbum) return;
+
+    if (!songFormData.title.trim()) {
+      toast.error('Song title is required');
+      return;
+    }
+
+    const dataToSave = {
+      album_id: selectedAlbum.id,
+      title: songFormData.title,
+      track_number: songFormData.track_number,
+      artist: songFormData.artist || null,
+      duration: songFormData.duration || null,
+    };
+
+    if (editingSong) {
+      const { error } = await supabase
+        .from('songs')
+        .update(dataToSave)
+        .eq('id', editingSong.id);
+
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Song updated');
+        setEditingSong(null);
+        fetchSongs(selectedAlbum.id);
+      }
+    } else {
+      const { error } = await supabase.from('songs').insert([dataToSave]);
+
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Song added');
+        fetchSongs(selectedAlbum.id);
+      }
+    }
+
+    setSongFormData({
+      title: '',
+      track_number: songs.length + 2,
+      artist: selectedAlbum.artist || '',
+      duration: '',
+    });
+  };
+
+  const handleDeleteSong = async (songId: string) => {
+    if (!confirm('Delete this song?')) return;
+
+    const { error } = await supabase.from('songs').delete().eq('id', songId);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Song deleted');
+      if (selectedAlbum) {
+        fetchSongs(selectedAlbum.id);
+      }
+    }
   };
 
   return (
@@ -456,6 +578,9 @@ export default function AdminAlbums() {
                       <TableCell className="text-muted-foreground">{album.genre || '-'}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openSongsDialog(album)} title="Manage songs">
+                            <Music className="h-4 w-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(album)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -471,6 +596,113 @@ export default function AdminAlbums() {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Songs Management Dialog */}
+        <Dialog open={songsDialogOpen} onOpenChange={setSongsDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Manage Songs - {selectedAlbum?.title}
+              </DialogTitle>
+            </DialogHeader>
+            
+            {/* Add/Edit Song Form */}
+            <Card className="bg-muted/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">
+                  {editingSong ? 'Edit Song' : 'Add New Song'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-4 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Track #</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={songFormData.track_number}
+                      onChange={(e) => setSongFormData({ ...songFormData, track_number: parseInt(e.target.value) || 1 })}
+                    />
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <Label className="text-xs">Title</Label>
+                    <Input
+                      value={songFormData.title}
+                      onChange={(e) => setSongFormData({ ...songFormData, title: e.target.value })}
+                      placeholder="Song title"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Duration</Label>
+                    <Input
+                      value={songFormData.duration}
+                      onChange={(e) => setSongFormData({ ...songFormData, duration: e.target.value })}
+                      placeholder="3:45"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={songFormData.artist}
+                    onChange={(e) => setSongFormData({ ...songFormData, artist: e.target.value })}
+                    placeholder="Artist (optional)"
+                    className="flex-1"
+                  />
+                  <Button type="button" onClick={handleSaveSong}>
+                    {editingSong ? 'Update' : 'Add'}
+                  </Button>
+                  {editingSong && (
+                    <Button type="button" variant="outline" onClick={openNewSongForm}>
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Songs List */}
+            <div className="space-y-2">
+              <Label>Songs ({songs.length})</Label>
+              {songs.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No songs yet. Add your first song above.</p>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">#</TableHead>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Artist</TableHead>
+                        <TableHead className="w-20">Duration</TableHead>
+                        <TableHead className="w-20">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {songs.map((song) => (
+                        <TableRow key={song.id}>
+                          <TableCell className="font-medium">{song.track_number}</TableCell>
+                          <TableCell>{song.title}</TableCell>
+                          <TableCell className="text-muted-foreground">{song.artist || '-'}</TableCell>
+                          <TableCell className="text-muted-foreground">{song.duration || '-'}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => handleEditSong(song)}>
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDeleteSong(song.id)}>
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );
