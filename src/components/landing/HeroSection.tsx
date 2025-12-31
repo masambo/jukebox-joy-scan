@@ -11,7 +11,7 @@ const HeroSection = () => {
         <img
           src={heroImage}
           alt="Neon jukebox in a bar"
-          className="w-full h-full object-contain object-center"
+          className="w-full h-full object-cover"
         />
       </div>
 
