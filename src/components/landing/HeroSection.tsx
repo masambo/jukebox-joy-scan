@@ -1,5 +1,5 @@
 import { NeonButton } from "@/components/ui/NeonButton";
-import { QrCode, Music, Search, Sparkles } from "lucide-react";
+import { QrCode, Music, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-jukebox-new.png";
 
@@ -11,32 +11,19 @@ const HeroSection = () => {
         <img
           src={heroImage}
           alt="Neon jukebox in a bar"
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain object-center"
         />
       </div>
 
       {/* Content */}
       <div className="container mx-auto px-4 pt-24 pb-16 relative z-10">
         <div className="max-w-4xl mx-auto text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-dark border border-primary/30 mb-8">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-foreground">
-              AI-Powered Jukebox Digitization
-            </span>
-          </div>
-
           {/* Headline */}
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-6 leading-tight">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-8 leading-tight">
             Find Your Song
             <br />
             <span className="text-primary text-glow">In Seconds</span>
           </h1>
-
-          {/* Subheadline */}
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-            No more squinting at tiny numbers in dim bar lighting. Scan, search, and find any song instantly with Namjukes - the digital companion for every jukebox.
-          </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
