@@ -6,11 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, QrCode } from 'lucide-react';
+import { Plus, Pencil, Trash2, QrCode, Users } from 'lucide-react';
 
 interface Bar {
   id: string;
@@ -23,10 +24,28 @@ interface Bar {
   address: string | null;
 }
 
+interface Profile {
+  id: string;
+  email: string;
+  full_name: string | null;
+}
+
+interface BarManager {
+  id: string;
+  user_id: string;
+  bar_id: string;
+  profiles?: Profile;
+}
+
 export default function AdminBars() {
   const [bars, setBars] = useState<Bar[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [managerDialogOpen, setManagerDialogOpen] = useState(false);
+  const [selectedBar, setSelectedBar] = useState<Bar | null>(null);
+  const [barManagers, setBarManagers] = useState<BarManager[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState('');
   const [editingBar, setEditingBar] = useState<Bar | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -40,6 +59,7 @@ export default function AdminBars() {
 
   useEffect(() => {
     fetchBars();
+    fetchProfiles();
   }, []);
 
   const fetchBars = async () => {
@@ -50,6 +70,26 @@ export default function AdminBars() {
       setBars(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchProfiles = async () => {
+    const { data, error } = await supabase.from('profiles').select('id, email, full_name');
+    if (!error && data) {
+      setProfiles(data);
+    }
+  };
+
+  const fetchBarManagers = async (barId: string) => {
+    const { data, error } = await supabase
+      .from('bar_managers')
+      .select('id, user_id, bar_id, profiles:user_id(id, email, full_name)')
+      .eq('bar_id', barId);
+    
+    if (error) {
+      toast.error('Failed to load bar managers');
+    } else {
+      setBarManagers((data as unknown as BarManager[]) || []);
+    }
   };
 
   const generateSlug = (name: string) => {
@@ -136,6 +176,64 @@ export default function AdminBars() {
       secondary_color: '#D946EF',
     });
     setDialogOpen(true);
+  };
+
+  const openManagerDialog = async (bar: Bar) => {
+    setSelectedBar(bar);
+    await fetchBarManagers(bar.id);
+    setSelectedUserId('');
+    setManagerDialogOpen(true);
+  };
+
+  const handleAddManager = async () => {
+    if (!selectedBar || !selectedUserId) {
+      toast.error('Please select a user');
+      return;
+    }
+
+    // Check if already a manager
+    const existing = barManagers.find(m => m.user_id === selectedUserId);
+    if (existing) {
+      toast.error('User is already a manager for this bar');
+      return;
+    }
+
+    // Add bar_manager role if not exists
+    const { error: roleError } = await supabase
+      .from('user_roles')
+      .upsert({ user_id: selectedUserId, role: 'bar_manager' }, { onConflict: 'user_id,role' });
+
+    if (roleError && !roleError.message.includes('duplicate')) {
+      console.error('Role error:', roleError);
+    }
+
+    // Add to bar_managers
+    const { error } = await supabase.from('bar_managers').insert({
+      user_id: selectedUserId,
+      bar_id: selectedBar.id,
+    });
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Manager added successfully');
+      setSelectedUserId('');
+      fetchBarManagers(selectedBar.id);
+    }
+  };
+
+  const handleRemoveManager = async (managerId: string) => {
+    if (!confirm('Remove this manager?')) return;
+
+    const { error } = await supabase.from('bar_managers').delete().eq('id', managerId);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Manager removed');
+      if (selectedBar) {
+        fetchBarManagers(selectedBar.id);
+      }
+    }
   };
 
   const getQRCodeUrl = (slug: string) => {
@@ -285,7 +383,10 @@ export default function AdminBars() {
                         </a>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openManagerDialog(bar)} title="Manage bar managers">
+                            <Users className="h-4 w-4" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(bar)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -301,6 +402,60 @@ export default function AdminBars() {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Manager Dialog */}
+        <Dialog open={managerDialogOpen} onOpenChange={setManagerDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Manage Bar Managers - {selectedBar?.name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {/* Add Manager */}
+              <div className="flex gap-2">
+                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select a user to add" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {profiles
+                      .filter(p => !barManagers.find(m => m.user_id === p.id))
+                      .map((profile) => (
+                        <SelectItem key={profile.id} value={profile.id}>
+                          {profile.full_name || profile.email}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={handleAddManager}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+              </div>
+
+              {/* Current Managers */}
+              <div className="space-y-2">
+                <Label>Current Managers</Label>
+                {barManagers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">No managers assigned yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {barManagers.map((manager) => (
+                      <div key={manager.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                        <div>
+                          <p className="font-medium">{manager.profiles?.full_name || 'Unknown'}</p>
+                          <p className="text-sm text-muted-foreground">{manager.profiles?.email}</p>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => handleRemoveManager(manager.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminLayout>
   );
