@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Camera, Loader2, Trash2 } from 'lucide-react';
+import { Plus, Camera, Loader2, Trash2, Pencil } from 'lucide-react';
 
 interface Bar {
   id: string;
@@ -43,6 +43,7 @@ export default function AdminAlbums() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scannedSongs, setScannedSongs] = useState<ScannedSong[]>([]);
+  const [editingAlbum, setEditingAlbum] = useState<Album | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
@@ -113,45 +114,64 @@ export default function AdminAlbums() {
       return;
     }
 
-    // Create album
-    const { data: album, error: albumError } = await supabase
-      .from('albums')
-      .insert([{
-        bar_id: formData.bar_id,
-        title: formData.title,
-        artist: formData.artist || null,
-        disk_number: formData.disk_number,
-        cover_url: formData.cover_url || null,
-        genre: formData.genre || null,
-        year: formData.year || null,
-      }])
-      .select()
-      .single();
+    const dataToSave = {
+      bar_id: formData.bar_id,
+      title: formData.title,
+      artist: formData.artist || null,
+      disk_number: formData.disk_number,
+      cover_url: formData.cover_url || null,
+      genre: formData.genre || null,
+      year: formData.year || null,
+    };
 
-    if (albumError) {
-      toast.error(albumError.message);
-      return;
-    }
+    if (editingAlbum) {
+      // Update existing album
+      const { error } = await supabase
+        .from('albums')
+        .update(dataToSave)
+        .eq('id', editingAlbum.id);
 
-    // Insert songs if scanned
-    if (scannedSongs.length > 0) {
-      const songsToInsert = scannedSongs.map((song) => ({
-        album_id: album.id,
-        title: song.title,
-        track_number: song.track_number,
-        duration: song.duration || null,
-        artist: song.artist || formData.artist || null,
-      }));
-
-      const { error: songsError } = await supabase.from('songs').insert(songsToInsert);
-      if (songsError) {
-        toast.error('Album created but failed to add songs');
+      if (error) {
+        toast.error(error.message);
+        return;
       }
+
+      toast.success('Album updated successfully');
+    } else {
+      // Create new album
+      const { data: album, error: albumError } = await supabase
+        .from('albums')
+        .insert([dataToSave])
+        .select()
+        .single();
+
+      if (albumError) {
+        toast.error(albumError.message);
+        return;
+      }
+
+      // Insert songs if scanned
+      if (scannedSongs.length > 0) {
+        const songsToInsert = scannedSongs.map((song) => ({
+          album_id: album.id,
+          title: song.title,
+          track_number: song.track_number,
+          duration: song.duration || null,
+          artist: song.artist || formData.artist || null,
+        }));
+
+        const { error: songsError } = await supabase.from('songs').insert(songsToInsert);
+        if (songsError) {
+          toast.error('Album created but failed to add songs');
+        }
+      }
+
+      toast.success('Album created successfully');
     }
 
-    toast.success('Album created successfully');
     setDialogOpen(false);
     setScannedSongs([]);
+    setEditingAlbum(null);
     setFormData({
       bar_id: '',
       title: '',
@@ -162,6 +182,21 @@ export default function AdminAlbums() {
       year: new Date().getFullYear(),
     });
     fetchData();
+  };
+
+  const handleEdit = (album: Album) => {
+    setEditingAlbum(album);
+    setFormData({
+      bar_id: album.bar_id,
+      title: album.title,
+      artist: album.artist || '',
+      disk_number: album.disk_number,
+      cover_url: album.cover_url || '',
+      genre: album.genre || '',
+      year: album.year || new Date().getFullYear(),
+    });
+    setScannedSongs([]);
+    setDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -177,6 +212,7 @@ export default function AdminAlbums() {
   };
 
   const openNewDialog = () => {
+    setEditingAlbum(null);
     setScannedSongs([]);
     setFormData({
       bar_id: '',
@@ -204,7 +240,7 @@ export default function AdminAlbums() {
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Add New Album</DialogTitle>
+                <DialogTitle>{editingAlbum ? 'Edit Album' : 'Add New Album'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -360,7 +396,10 @@ export default function AdminAlbums() {
                 )}
 
                 <Button type="submit" className="w-full">
-                  Create Album {scannedSongs.length > 0 && `with ${scannedSongs.length} Songs`}
+                  {editingAlbum 
+                    ? 'Update Album' 
+                    : `Create Album${scannedSongs.length > 0 ? ` with ${scannedSongs.length} Songs` : ''}`
+                  }
                 </Button>
               </form>
             </DialogContent>
@@ -416,9 +455,14 @@ export default function AdminAlbums() {
                       <TableCell className="text-muted-foreground">{album.bars?.name}</TableCell>
                       <TableCell className="text-muted-foreground">{album.genre || '-'}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(album.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(album)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(album.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
