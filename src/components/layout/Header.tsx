@@ -1,7 +1,8 @@
-import { Music2, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { NeonButton } from "@/components/ui/NeonButton";
+import namjukesLogo from "@/assets/namjukes-logo.png";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -11,13 +12,12 @@ const Header = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-[0_0_20px_hsl(280_100%_65%/0.5)] group-hover:shadow-[0_0_30px_hsl(280_100%_65%/0.7)] transition-shadow">
-              <Music2 className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-xl md:text-2xl font-display font-bold text-foreground">
-              Nam<span className="text-primary text-glow">jukes</span>
-            </span>
+          <Link to="/" className="flex items-center group">
+            <img 
+              src={namjukesLogo} 
+              alt="NamJukes" 
+              className="h-10 md:h-12 w-auto"
+            />
           </Link>
 
           {/* Desktop Navigation */}
