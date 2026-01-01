@@ -57,9 +57,8 @@ interface BulkAlbumItem {
   year: number;
   bar_id: string;
   scanning: boolean;
+  scanned: boolean;
   scannedSongs: ScannedSong[];
-  uploaded: boolean;
-  cover_url: string;
 }
 
 export default function AdminAlbums() {
@@ -381,19 +380,23 @@ export default function AdminAlbums() {
       id: `${Date.now()}-${idx}`,
       file,
       preview: URL.createObjectURL(file),
-      title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+      title: `Disc ${bulkItems.length + idx + 1}`,
       artist: '',
       disk_number: bulkItems.length + idx + 1,
       genre: '',
       year: new Date().getFullYear(),
       bar_id: bulkBarId,
       scanning: false,
+      scanned: false,
       scannedSongs: [],
-      uploaded: false,
-      cover_url: '',
     }));
 
     setBulkItems([...bulkItems, ...newItems]);
+    
+    // Auto-scan all new images
+    newItems.forEach(item => {
+      scanBulkItemImage(item);
+    });
   };
 
   const updateBulkItem = (id: string, updates: Partial<BulkAlbumItem>) => {
@@ -411,7 +414,9 @@ export default function AdminAlbums() {
   };
 
   const scanBulkItemImage = async (item: BulkAlbumItem) => {
-    updateBulkItem(item.id, { scanning: true });
+    setBulkItems(items => items.map(i => 
+      i.id === item.id ? { ...i, scanning: true } : i
+    ));
     
     try {
       const reader = new FileReader();
@@ -423,18 +428,29 @@ export default function AdminAlbums() {
         });
 
         if (response.error) {
-          toast.error(`Failed to scan ${item.title}`);
+          toast.error(`Failed to scan image`);
+          setBulkItems(items => items.map(i => 
+            i.id === item.id ? { ...i, scanning: false, scanned: true } : i
+          ));
         } else if (response.data.songs) {
-          updateBulkItem(item.id, { scannedSongs: response.data.songs });
-          toast.success(`Found ${response.data.songs.length} songs in ${item.title}`);
+          setBulkItems(items => items.map(i => 
+            i.id === item.id ? { ...i, scannedSongs: response.data.songs, scanning: false, scanned: true } : i
+          ));
+          toast.success(`Found ${response.data.songs.length} songs`);
         }
-        updateBulkItem(item.id, { scanning: false });
       };
       reader.readAsDataURL(item.file);
     } catch (error) {
-      toast.error(`Failed to scan ${item.title}`);
-      updateBulkItem(item.id, { scanning: false });
+      toast.error(`Failed to scan image`);
+      setBulkItems(items => items.map(i => 
+        i.id === item.id ? { ...i, scanning: false, scanned: true } : i
+      ));
     }
+  };
+
+  const scanAllBulkItems = async () => {
+    const unscannedItems = bulkItems.filter(item => !item.scanned && !item.scanning);
+    unscannedItems.forEach(item => scanBulkItemImage(item));
   };
 
   const handleBulkUpload = async () => {
@@ -448,30 +464,19 @@ export default function AdminAlbums() {
       return;
     }
 
+    // Check if any items have songs scanned
+    const itemsWithSongs = bulkItems.filter(item => item.scannedSongs.length > 0);
+    if (itemsWithSongs.length === 0) {
+      toast.error('No songs have been scanned yet. Please wait for scanning to complete.');
+      return;
+    }
+
     setBulkUploading(true);
     let successCount = 0;
 
-    for (const item of bulkItems) {
+    for (const item of itemsWithSongs) {
       try {
-        // Upload cover image
-        const fileExt = item.file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `${bulkBarId}/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('album-covers')
-          .upload(filePath, item.file);
-
-        if (uploadError) {
-          toast.error(`Failed to upload cover for ${item.title}`);
-          continue;
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('album-covers')
-          .getPublicUrl(filePath);
-
-        // Create album
+        // Create album without cover (cover can be added later)
         const { data: album, error: albumError } = await supabase
           .from('albums')
           .insert([{
@@ -479,7 +484,7 @@ export default function AdminAlbums() {
             title: item.title,
             artist: item.artist || null,
             disk_number: item.disk_number,
-            cover_url: publicUrl,
+            cover_url: null,
             genre: item.genre || null,
             year: item.year || null,
           }])
@@ -491,17 +496,19 @@ export default function AdminAlbums() {
           continue;
         }
 
-        // Insert songs if scanned
-        if (item.scannedSongs.length > 0) {
-          const songsToInsert = item.scannedSongs.map((song) => ({
-            album_id: album.id,
-            title: song.title,
-            track_number: song.track_number,
-            duration: song.duration || null,
-            artist: song.artist || item.artist || null,
-          }));
+        // Insert scanned songs
+        const songsToInsert = item.scannedSongs.map((song) => ({
+          album_id: album.id,
+          title: song.title,
+          track_number: song.track_number,
+          duration: song.duration || null,
+          artist: song.artist || item.artist || null,
+        }));
 
-          await supabase.from('songs').insert(songsToInsert);
+        const { error: songsError } = await supabase.from('songs').insert(songsToInsert);
+        
+        if (songsError) {
+          toast.error(`Album created but failed to add songs for ${item.title}`);
         }
 
         successCount++;
@@ -509,6 +516,9 @@ export default function AdminAlbums() {
         toast.error(`Error processing ${item.title}`);
       }
     }
+
+    setBulkUploading(false);
+    toast.success(`Successfully created ${successCount} albums with songs`);
 
     setBulkUploading(false);
     toast.success(`Successfully created ${successCount} of ${bulkItems.length} albums`);
@@ -710,10 +720,19 @@ export default function AdminAlbums() {
         <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Bulk Upload Albums</DialogTitle>
+              <DialogTitle>Bulk Scan Albums</DialogTitle>
             </DialogHeader>
             
             <div className="space-y-4">
+              <Card className="bg-primary/5 border-primary/20">
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground">
+                    Upload photos of album track listings. AI will automatically scan each image to extract song information. 
+                    Cover photos can be added later after the albums are created.
+                  </p>
+                </CardContent>
+              </Card>
+
               {/* Bar Selection */}
               <div className="space-y-2">
                 <Label>Select Bar for All Albums</Label>
@@ -733,7 +752,7 @@ export default function AdminAlbums() {
 
               {/* File Input */}
               <div className="space-y-2">
-                <Label>Upload Album Covers</Label>
+                <Label>Upload Track Listing Images</Label>
                 <input
                   ref={bulkFileInputRef}
                   type="file"
@@ -749,13 +768,38 @@ export default function AdminAlbums() {
                   className="w-full"
                   disabled={!bulkBarId}
                 >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Select Images
+                  <Camera className="h-4 w-4 mr-2" />
+                  Select Track Listing Photos
                 </Button>
                 {!bulkBarId && (
                   <p className="text-xs text-muted-foreground">Please select a bar first</p>
                 )}
               </div>
+
+              {/* Status Summary */}
+              {bulkItems.length > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {bulkItems.filter(i => i.scanning).length > 0 && (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Scanning {bulkItems.filter(i => i.scanning).length} images...
+                      </span>
+                    )}
+                    {bulkItems.filter(i => i.scanning).length === 0 && (
+                      <span>
+                        {bulkItems.length} albums • {bulkItems.reduce((acc, i) => acc + i.scannedSongs.length, 0)} songs found
+                      </span>
+                    )}
+                  </span>
+                  {bulkItems.some(i => !i.scanned && !i.scanning) && (
+                    <Button variant="outline" size="sm" onClick={scanAllBulkItems}>
+                      <Camera className="h-3 w-3 mr-1" />
+                      Rescan All
+                    </Button>
+                  )}
+                </div>
+              )}
 
               {/* Album Items */}
               {bulkItems.length > 0 && (
@@ -766,7 +810,7 @@ export default function AdminAlbums() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="absolute top-2 right-2 h-6 w-6"
+                          className="absolute top-2 right-2 h-6 w-6 z-10"
                           onClick={() => removeBulkItem(item.id)}
                         >
                           <X className="h-4 w-4" />
@@ -774,12 +818,17 @@ export default function AdminAlbums() {
                         <CardContent className="p-4">
                           <div className="flex gap-4">
                             {/* Preview */}
-                            <div className="w-24 h-24 flex-shrink-0">
+                            <div className="w-32 h-32 flex-shrink-0 relative">
                               <img
                                 src={item.preview}
-                                alt={item.title}
+                                alt="Track listing"
                                 className="w-full h-full object-cover rounded-lg"
                               />
+                              {item.scanning && (
+                                <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-lg">
+                                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                </div>
+                              )}
                             </div>
                             
                             {/* Form */}
@@ -795,7 +844,7 @@ export default function AdminAlbums() {
                                   />
                                 </div>
                                 <div className="col-span-3 space-y-1">
-                                  <Label className="text-xs">Title</Label>
+                                  <Label className="text-xs">Album Title</Label>
                                   <Input
                                     value={item.title}
                                     onChange={(e) => updateBulkItem(item.id, { title: e.target.value })}
@@ -830,33 +879,34 @@ export default function AdminAlbums() {
                                 </div>
                               </div>
                               
-                              {/* Scan Button */}
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => scanBulkItemImage(item)}
-                                  disabled={item.scanning}
-                                >
-                                  {item.scanning ? (
-                                    <>
-                                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                      Scanning...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Camera className="h-3 w-3 mr-1" />
-                                      Scan for Songs
-                                    </>
-                                  )}
-                                </Button>
-                                {item.scannedSongs.length > 0 && (
-                                  <span className="text-xs text-primary">
-                                    {item.scannedSongs.length} songs found
-                                  </span>
-                                )}
-                              </div>
+                              {/* Scanned Songs Display */}
+                              {item.scannedSongs.length > 0 ? (
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-primary">{item.scannedSongs.length} songs scanned</Label>
+                                  <div className="max-h-24 overflow-y-auto bg-muted/50 rounded p-2 text-xs">
+                                    {item.scannedSongs.map((song, idx) => (
+                                      <div key={idx} className="flex gap-2">
+                                        <span className="text-muted-foreground w-6">{song.track_number}.</span>
+                                        <span>{song.title}</span>
+                                        {song.duration && <span className="text-muted-foreground ml-auto">{song.duration}</span>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : item.scanned && !item.scanning ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-destructive">No songs found</span>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => scanBulkItemImage(item)}
+                                  >
+                                    <Camera className="h-3 w-3 mr-1" />
+                                    Retry Scan
+                                  </Button>
+                                </div>
+                              ) : null}
                             </div>
                           </div>
                         </CardContent>
@@ -866,22 +916,22 @@ export default function AdminAlbums() {
                 </ScrollArea>
               )}
 
-              {/* Upload Button */}
+              {/* Create Albums Button */}
               {bulkItems.length > 0 && (
                 <Button
                   className="w-full"
                   onClick={handleBulkUpload}
-                  disabled={bulkUploading || !bulkBarId}
+                  disabled={bulkUploading || !bulkBarId || bulkItems.some(i => i.scanning) || bulkItems.every(i => i.scannedSongs.length === 0)}
                 >
                   {bulkUploading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Uploading...
+                      Creating Albums...
                     </>
                   ) : (
                     <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload {bulkItems.length} Albums
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create {bulkItems.filter(i => i.scannedSongs.length > 0).length} Albums with {bulkItems.reduce((acc, i) => acc + i.scannedSongs.length, 0)} Songs
                     </>
                   )}
                 </Button>
