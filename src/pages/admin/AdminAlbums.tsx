@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Camera, Loader2, Trash2, Pencil, Music } from 'lucide-react';
+import { Plus, Camera, Loader2, Trash2, Pencil, Music, Upload, X } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Bar {
   id: string;
@@ -45,6 +46,22 @@ interface Song {
   duration: string | null;
 }
 
+interface BulkAlbumItem {
+  id: string;
+  file: File;
+  preview: string;
+  title: string;
+  artist: string;
+  disk_number: number;
+  genre: string;
+  year: number;
+  bar_id: string;
+  scanning: boolean;
+  scannedSongs: ScannedSong[];
+  uploaded: boolean;
+  cover_url: string;
+}
+
 export default function AdminAlbums() {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [bars, setBars] = useState<Bar[]>([]);
@@ -64,6 +81,13 @@ export default function AdminAlbums() {
     duration: '',
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Bulk upload state
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkItems, setBulkItems] = useState<BulkAlbumItem[]>([]);
+  const [bulkBarId, setBulkBarId] = useState('');
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const bulkFileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     bar_id: '',
@@ -348,18 +372,171 @@ export default function AdminAlbums() {
     }
   };
 
+  // Bulk upload functions
+  const handleBulkFilesSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const newItems: BulkAlbumItem[] = files.map((file, idx) => ({
+      id: `${Date.now()}-${idx}`,
+      file,
+      preview: URL.createObjectURL(file),
+      title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+      artist: '',
+      disk_number: bulkItems.length + idx + 1,
+      genre: '',
+      year: new Date().getFullYear(),
+      bar_id: bulkBarId,
+      scanning: false,
+      scannedSongs: [],
+      uploaded: false,
+      cover_url: '',
+    }));
+
+    setBulkItems([...bulkItems, ...newItems]);
+  };
+
+  const updateBulkItem = (id: string, updates: Partial<BulkAlbumItem>) => {
+    setBulkItems(items => items.map(item => 
+      item.id === id ? { ...item, ...updates } : item
+    ));
+  };
+
+  const removeBulkItem = (id: string) => {
+    setBulkItems(items => {
+      const item = items.find(i => i.id === id);
+      if (item) URL.revokeObjectURL(item.preview);
+      return items.filter(i => i.id !== id);
+    });
+  };
+
+  const scanBulkItemImage = async (item: BulkAlbumItem) => {
+    updateBulkItem(item.id, { scanning: true });
+    
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        
+        const response = await supabase.functions.invoke('scan-album', {
+          body: { imageBase64: base64 },
+        });
+
+        if (response.error) {
+          toast.error(`Failed to scan ${item.title}`);
+        } else if (response.data.songs) {
+          updateBulkItem(item.id, { scannedSongs: response.data.songs });
+          toast.success(`Found ${response.data.songs.length} songs in ${item.title}`);
+        }
+        updateBulkItem(item.id, { scanning: false });
+      };
+      reader.readAsDataURL(item.file);
+    } catch (error) {
+      toast.error(`Failed to scan ${item.title}`);
+      updateBulkItem(item.id, { scanning: false });
+    }
+  };
+
+  const handleBulkUpload = async () => {
+    if (!bulkBarId) {
+      toast.error('Please select a bar first');
+      return;
+    }
+
+    if (bulkItems.length === 0) {
+      toast.error('No albums to upload');
+      return;
+    }
+
+    setBulkUploading(true);
+    let successCount = 0;
+
+    for (const item of bulkItems) {
+      try {
+        // Upload cover image
+        const fileExt = item.file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `${bulkBarId}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('album-covers')
+          .upload(filePath, item.file);
+
+        if (uploadError) {
+          toast.error(`Failed to upload cover for ${item.title}`);
+          continue;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('album-covers')
+          .getPublicUrl(filePath);
+
+        // Create album
+        const { data: album, error: albumError } = await supabase
+          .from('albums')
+          .insert([{
+            bar_id: bulkBarId,
+            title: item.title,
+            artist: item.artist || null,
+            disk_number: item.disk_number,
+            cover_url: publicUrl,
+            genre: item.genre || null,
+            year: item.year || null,
+          }])
+          .select()
+          .single();
+
+        if (albumError) {
+          toast.error(`Failed to create album ${item.title}`);
+          continue;
+        }
+
+        // Insert songs if scanned
+        if (item.scannedSongs.length > 0) {
+          const songsToInsert = item.scannedSongs.map((song) => ({
+            album_id: album.id,
+            title: song.title,
+            track_number: song.track_number,
+            duration: song.duration || null,
+            artist: song.artist || item.artist || null,
+          }));
+
+          await supabase.from('songs').insert(songsToInsert);
+        }
+
+        successCount++;
+      } catch (error) {
+        toast.error(`Error processing ${item.title}`);
+      }
+    }
+
+    setBulkUploading(false);
+    toast.success(`Successfully created ${successCount} of ${bulkItems.length} albums`);
+    
+    // Cleanup
+    bulkItems.forEach(item => URL.revokeObjectURL(item.preview));
+    setBulkItems([]);
+    setBulkDialogOpen(false);
+    fetchData();
+  };
+
   return (
     <AdminLayout>
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-heading font-bold">Albums</h1>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openNewDialog}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Album
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setBulkDialogOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Bulk Upload
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={openNewDialog}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Album
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingAlbum ? 'Edit Album' : 'Add New Album'}</DialogTitle>
@@ -526,8 +703,192 @@ export default function AdminAlbums() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
+        {/* Bulk Upload Dialog */}
+        <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Bulk Upload Albums</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {/* Bar Selection */}
+              <div className="space-y-2">
+                <Label>Select Bar for All Albums</Label>
+                <Select value={bulkBarId} onValueChange={setBulkBarId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a bar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bars.map((bar) => (
+                      <SelectItem key={bar.id} value={bar.id}>
+                        {bar.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* File Input */}
+              <div className="space-y-2">
+                <Label>Upload Album Covers</Label>
+                <input
+                  ref={bulkFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleBulkFilesSelect}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => bulkFileInputRef.current?.click()}
+                  className="w-full"
+                  disabled={!bulkBarId}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Select Images
+                </Button>
+                {!bulkBarId && (
+                  <p className="text-xs text-muted-foreground">Please select a bar first</p>
+                )}
+              </div>
+
+              {/* Album Items */}
+              {bulkItems.length > 0 && (
+                <ScrollArea className="h-[400px] border rounded-lg p-4">
+                  <div className="space-y-4">
+                    {bulkItems.map((item) => (
+                      <Card key={item.id} className="relative">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-2 right-2 h-6 w-6"
+                          onClick={() => removeBulkItem(item.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                        <CardContent className="p-4">
+                          <div className="flex gap-4">
+                            {/* Preview */}
+                            <div className="w-24 h-24 flex-shrink-0">
+                              <img
+                                src={item.preview}
+                                alt={item.title}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            </div>
+                            
+                            {/* Form */}
+                            <div className="flex-1 space-y-3">
+                              <div className="grid grid-cols-4 gap-2">
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Disk #</Label>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    value={item.disk_number}
+                                    onChange={(e) => updateBulkItem(item.id, { disk_number: parseInt(e.target.value) || 1 })}
+                                  />
+                                </div>
+                                <div className="col-span-3 space-y-1">
+                                  <Label className="text-xs">Title</Label>
+                                  <Input
+                                    value={item.title}
+                                    onChange={(e) => updateBulkItem(item.id, { title: e.target.value })}
+                                    placeholder="Album title"
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-3 gap-2">
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Artist</Label>
+                                  <Input
+                                    value={item.artist}
+                                    onChange={(e) => updateBulkItem(item.id, { artist: e.target.value })}
+                                    placeholder="Artist"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Genre</Label>
+                                  <Input
+                                    value={item.genre}
+                                    onChange={(e) => updateBulkItem(item.id, { genre: e.target.value })}
+                                    placeholder="Genre"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Year</Label>
+                                  <Input
+                                    type="number"
+                                    value={item.year}
+                                    onChange={(e) => updateBulkItem(item.id, { year: parseInt(e.target.value) })}
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Scan Button */}
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => scanBulkItemImage(item)}
+                                  disabled={item.scanning}
+                                >
+                                  {item.scanning ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                      Scanning...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Camera className="h-3 w-3 mr-1" />
+                                      Scan for Songs
+                                    </>
+                                  )}
+                                </Button>
+                                {item.scannedSongs.length > 0 && (
+                                  <span className="text-xs text-primary">
+                                    {item.scannedSongs.length} songs found
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+
+              {/* Upload Button */}
+              {bulkItems.length > 0 && (
+                <Button
+                  className="w-full"
+                  onClick={handleBulkUpload}
+                  disabled={bulkUploading || !bulkBarId}
+                >
+                  {bulkUploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload {bulkItems.length} Albums
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
         <Card className="glass">
           <CardContent className="p-0">
             <Table>
