@@ -63,6 +63,9 @@ const BarPage = () => {
   useEffect(() => {
     if (slug) {
       fetchBarData();
+    } else {
+      setError('Invalid bar URL');
+      setLoading(false);
     }
   }, [slug]);
 
