@@ -1,5 +1,5 @@
-import { Music2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import namjukesLogo from "@/assets/namjukes-logo.png";
 
 const Footer = () => {
   return (
@@ -8,13 +8,12 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div className="md:col-span-1">
-            <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <Music2 className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <span className="text-xl font-display font-bold">
-                Nam<span className="text-primary">jukes</span>
-              </span>
+            <Link to="/" className="flex items-center mb-4">
+              <img 
+                src={namjukesLogo} 
+                alt="NamJukes" 
+                className="h-10 w-auto"
+              />
             </Link>
             <p className="text-muted-foreground text-sm">
               The digital companion for every jukebox. Find songs faster, play better music.
