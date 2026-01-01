@@ -12,6 +12,7 @@ import { ImageUpload } from '@/components/ui/ImageUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, QrCode, Users } from 'lucide-react';
+import { getBarUrl } from '@/utils/getBaseUrl';
 
 interface Bar {
   id: string;
@@ -237,7 +238,7 @@ export default function AdminBars() {
   };
 
   const getQRCodeUrl = (slug: string) => {
-    const barUrl = `${window.location.origin}/bar/${slug}`;
+    const barUrl = getBarUrl(slug);
     return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(barUrl)}`;
   };
 

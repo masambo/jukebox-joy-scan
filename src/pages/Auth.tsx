@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Music, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import namjukesLogo from '@/assets/namjukes-logo.png';
 
 export default function Auth() {
   const [email, setEmail] = useState('');
@@ -56,9 +57,12 @@ export default function Auth() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <Music className="h-10 w-10 text-primary" />
-            <span className="text-3xl font-heading font-bold text-glow">Namjukes</span>
+          <div className="flex flex-col items-center gap-4 mb-4">
+            <img 
+              src={namjukesLogo} 
+              alt="Namjukes" 
+              className="h-16 w-auto"
+            />
           </div>
           <p className="text-muted-foreground">Staff Login</p>
         </div>

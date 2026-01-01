@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { 
-  Music, 
   Building2, 
   Users, 
   Disc3, 
@@ -11,6 +10,7 @@ import {
   LayoutDashboard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import namjukesLogo from '@/assets/namjukes-logo.png';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -38,11 +38,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       {/* Sidebar */}
       <aside className="w-64 bg-card border-r border-border flex flex-col">
         <div className="p-4 border-b border-border">
-          <Link to="/admin" className="flex items-center gap-2">
-            <Music className="h-8 w-8 text-primary" />
-            <span className="text-xl font-heading font-bold">Namjukes</span>
+          <Link to="/admin" className="flex items-center justify-center">
+            <img 
+              src={namjukesLogo} 
+              alt="Namjukes" 
+              className="h-16 w-auto"
+            />
           </Link>
-          <p className="text-xs text-muted-foreground mt-1">Admin Panel</p>
+          <p className="text-xs text-muted-foreground mt-2 text-center">Admin Panel</p>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">

@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { 
-  Music, 
   Palette, 
   Disc3, 
   ListMusic,
@@ -11,6 +10,7 @@ import {
   LayoutDashboard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import namjukesLogo from '@/assets/namjukes-logo.png';
 
 interface ManagerLayoutProps {
   children: React.ReactNode;
@@ -40,7 +40,11 @@ export function ManagerLayout({ children, barName }: ManagerLayoutProps) {
       <aside className="w-64 bg-card border-r border-border flex flex-col">
         <div className="p-4 border-b border-border">
           <Link to="/manager" className="flex items-center gap-2">
-            <Music className="h-8 w-8 text-primary" />
+            <img 
+              src={namjukesLogo} 
+              alt="Namjukes" 
+              className="h-8 w-auto"
+            />
             <span className="text-xl font-heading font-bold">Namjukes</span>
           </Link>
           <p className="text-xs text-muted-foreground mt-1">Bar Manager</p>

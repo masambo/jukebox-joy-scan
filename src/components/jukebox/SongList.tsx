@@ -4,9 +4,10 @@ import SongRow from "./SongRow";
 interface SongListProps {
   songs: Song[];
   title?: string;
+  onSongClick?: (song: Song) => void;
 }
 
-const SongList = ({ songs, title }: SongListProps) => {
+const SongList = ({ songs, title, onSongClick }: SongListProps) => {
   if (songs.length === 0) {
     return (
       <div className="text-center py-12">
@@ -22,7 +23,11 @@ const SongList = ({ songs, title }: SongListProps) => {
       )}
       <div className="space-y-2">
         {songs.map((song) => (
-          <SongRow key={song.id} song={song} />
+          <SongRow 
+            key={song.id} 
+            song={song} 
+            onClick={onSongClick ? () => onSongClick(song) : undefined}
+          />
         ))}
       </div>
     </div>

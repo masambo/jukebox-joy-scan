@@ -3,11 +3,15 @@ import { Music } from "lucide-react";
 
 interface SongRowProps {
   song: Song;
+  onClick?: () => void;
 }
 
-const SongRow = ({ song }: SongRowProps) => {
+const SongRow = ({ song, onClick }: SongRowProps) => {
   return (
-    <div className="group flex items-center gap-4 p-4 bg-card rounded-xl border border-border hover:border-primary/50 transition-all hover:shadow-[0_0_20px_hsl(280_100%_65%/0.15)]">
+    <div 
+      onClick={onClick}
+      className={`group flex items-center gap-4 p-4 bg-card rounded-xl border border-border hover:border-primary/50 transition-all hover:shadow-[0_0_20px_hsl(280_100%_65%/0.15)] ${onClick ? 'cursor-pointer' : ''}`}
+    >
       {/* Icon */}
       <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
         <Music className="w-5 h-5 text-muted-foreground" />

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Disc3, Music2, ListMusic, QrCode, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
+import { getBarUrl } from '@/utils/getBaseUrl';
 
 export default function ManagerDashboard() {
   const { bar, loading } = useManagerBar();
@@ -58,7 +59,8 @@ export default function ManagerDashboard() {
     );
   }
 
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}/bar/${bar.slug}`)}`;
+  const barUrl = getBarUrl(bar.slug);
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(barUrl)}`;
 
   const statCards = [
     { title: 'Albums', value: stats.albums, icon: Disc3, color: 'text-primary' },
@@ -106,12 +108,12 @@ export default function ManagerDashboard() {
                 Print this QR code and place it in your bar. Customers can scan it to browse your jukebox catalog.
               </p>
               <a 
-                href={`${window.location.origin}/bar/${bar.slug}`}
+                href={barUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline text-sm mt-2"
               >
-                {window.location.origin}/bar/{bar.slug}
+                {barUrl}
               </a>
             </CardContent>
           </Card>

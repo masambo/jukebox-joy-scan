@@ -10,8 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Camera, Loader2, Trash2, Pencil, Music, Upload, X } from 'lucide-react';
+import { Plus, Camera, Loader2, Trash2, Pencil, Music, Upload, X, Printer, Download } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { exportAlbumsForPrint } from '@/utils/exportAlbums';
 
 interface Bar {
   id: string;
@@ -87,6 +88,9 @@ export default function AdminAlbums() {
   const [bulkBarId, setBulkBarId] = useState('');
   const [bulkUploading, setBulkUploading] = useState(false);
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
+  const scanningQueueRef = useRef<string[]>([]);
+  const isProcessingQueueRef = useRef(false);
+  const bulkItemsRef = useRef<BulkAlbumItem[]>([]);
   
   const [formData, setFormData] = useState({
     bar_id: '',
@@ -101,6 +105,11 @@ export default function AdminAlbums() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Keep bulkItemsRef in sync with bulkItems state
+  useEffect(() => {
+    bulkItemsRef.current = bulkItems;
+  }, [bulkItems]);
 
   const fetchData = async () => {
     const [albumsRes, barsRes] = await Promise.all([
@@ -372,17 +381,52 @@ export default function AdminAlbums() {
   };
 
   // Bulk upload functions
-  const handleBulkFilesSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBulkFilesSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+
+    if (!bulkBarId) {
+      toast.error('Please select a bar first');
+      if (e.target) {
+        e.target.value = '';
+      }
+      return;
+    }
+
+    // Get the last disc number for this bar from the database
+    let startDiskNumber = 1;
+    try {
+      const { data: existingAlbums, error } = await supabase
+        .from('albums')
+        .select('disk_number')
+        .eq('bar_id', bulkBarId)
+        .order('disk_number', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error('Error fetching last disc number:', error);
+        toast.error('Failed to get last disc number');
+      } else if (existingAlbums && existingAlbums.length > 0) {
+        startDiskNumber = existingAlbums[0].disk_number + 1;
+      }
+    } catch (error) {
+      console.error('Error fetching last disc number:', error);
+    }
+
+    // Also check existing bulk items for this bar to get the highest number
+    const existingBulkItemsForBar = bulkItems.filter(item => item.bar_id === bulkBarId);
+    if (existingBulkItemsForBar.length > 0) {
+      const maxBulkDiskNumber = Math.max(...existingBulkItemsForBar.map(item => item.disk_number));
+      startDiskNumber = Math.max(startDiskNumber, maxBulkDiskNumber + 1);
+    }
 
     const newItems: BulkAlbumItem[] = files.map((file, idx) => ({
       id: `${Date.now()}-${idx}`,
       file,
       preview: URL.createObjectURL(file),
-      title: `Disc ${bulkItems.length + idx + 1}`,
+      title: `Disc ${startDiskNumber + idx}`,
       artist: '',
-      disk_number: bulkItems.length + idx + 1,
+      disk_number: startDiskNumber + idx,
       genre: '',
       year: new Date().getFullYear(),
       bar_id: bulkBarId,
@@ -391,12 +435,26 @@ export default function AdminAlbums() {
       scannedSongs: [],
     }));
 
-    setBulkItems([...bulkItems, ...newItems]);
-    
-    // Auto-scan all new images
-    newItems.forEach(item => {
-      scanBulkItemImage(item);
+    setBulkItems(prevItems => {
+      const updatedItems = [...prevItems, ...newItems];
+      
+      // Add new items to scanning queue
+      newItems.forEach(item => {
+        scanningQueueRef.current.push(item.id);
+      });
+      
+      // Start processing queue if not already processing
+      if (!isProcessingQueueRef.current) {
+        setTimeout(() => processScanningQueue(), 500);
+      }
+      
+      return updatedItems;
     });
+    
+    // Reset file input to allow selecting same files again
+    if (e.target) {
+      e.target.value = '';
+    }
   };
 
   const updateBulkItem = (id: string, updates: Partial<BulkAlbumItem>) => {
@@ -413,9 +471,19 @@ export default function AdminAlbums() {
     });
   };
 
-  const scanBulkItemImage = async (item: BulkAlbumItem) => {
+  const scanBulkItemImage = async (itemId: string, retryCount = 0): Promise<void> => {
+    // Get fresh item from ref
+    const currentItem = bulkItemsRef.current.find(i => i.id === itemId);
+    
+    if (!currentItem) {
+      isProcessingQueueRef.current = false;
+      processScanningQueue();
+      return;
+    }
+    
+    // Mark as scanning
     setBulkItems(items => items.map(i => 
-      i.id === item.id ? { ...i, scanning: true } : i
+      i.id === itemId ? { ...i, scanning: true } : i
     ));
     
     try {
@@ -428,29 +496,183 @@ export default function AdminAlbums() {
         });
 
         if (response.error) {
-          toast.error(`Failed to scan image`);
+          // Handle rate limiting with retry
+          if (response.error.message?.includes('Rate limit') || response.error.message?.includes('429')) {
+            if (retryCount < 3) {
+              // Wait longer before retry (exponential backoff)
+              const delay = Math.pow(2, retryCount) * 2000; // 2s, 4s, 8s
+              setTimeout(() => {
+                scanBulkItemImage(itemId, retryCount + 1);
+              }, delay);
+              return;
+            }
+            toast.error(`Rate limit reached. Please wait and try again later.`);
+          } else {
+            toast.error(`Failed to scan image: ${response.error.message}`);
+          }
           setBulkItems(items => items.map(i => 
-            i.id === item.id ? { ...i, scanning: false, scanned: true } : i
+            i.id === itemId ? { ...i, scanning: false, scanned: true } : i
           ));
         } else if (response.data.songs) {
           setBulkItems(items => items.map(i => 
-            i.id === item.id ? { ...i, scannedSongs: response.data.songs, scanning: false, scanned: true } : i
+            i.id === itemId ? { ...i, scannedSongs: response.data.songs, scanning: false, scanned: true } : i
           ));
           toast.success(`Found ${response.data.songs.length} songs`);
+        } else {
+          setBulkItems(items => items.map(i => 
+            i.id === itemId ? { ...i, scanning: false, scanned: true } : i
+          ));
         }
+        
+        // Process next item in queue after state update
+        isProcessingQueueRef.current = false;
+        setTimeout(() => {
+          processScanningQueue();
+        }, 200);
       };
-      reader.readAsDataURL(item.file);
+      reader.readAsDataURL(currentItem.file);
     } catch (error) {
       toast.error(`Failed to scan image`);
       setBulkItems(items => items.map(i => 
-        i.id === item.id ? { ...i, scanning: false, scanned: true } : i
+        i.id === itemId ? { ...i, scanning: false, scanned: true } : i
       ));
+      // Process next item in queue even on error
+      isProcessingQueueRef.current = false;
+      setTimeout(() => {
+        processScanningQueue();
+      }, 200);
     }
+  };
+
+  const processScanningQueue = () => {
+    // Prevent concurrent processing
+    if (isProcessingQueueRef.current) {
+      return;
+    }
+    
+    // Use setState callback to get latest state
+    setBulkItems(currentItems => {
+      // Update ref with current items immediately
+      bulkItemsRef.current = currentItems;
+      
+      // Find next unscanned item that's not currently being scanned
+      const nextItemId = scanningQueueRef.current.find(id => {
+        const item = currentItems.find(i => i.id === id);
+        return item && !item.scanned && !item.scanning;
+      });
+      
+      if (!nextItemId) {
+        isProcessingQueueRef.current = false;
+        return currentItems;
+      }
+      
+      const nextItem = currentItems.find(i => i.id === nextItemId);
+      if (!nextItem) {
+        isProcessingQueueRef.current = false;
+        return currentItems;
+      }
+      
+      isProcessingQueueRef.current = true;
+      
+      // Process next item with delay to avoid rate limiting
+      setTimeout(async () => {
+        await scanBulkItemImage(nextItemId);
+      }, 1000);
+      
+      return currentItems;
+    });
   };
 
   const scanAllBulkItems = async () => {
     const unscannedItems = bulkItems.filter(item => !item.scanned && !item.scanning);
-    unscannedItems.forEach(item => scanBulkItemImage(item));
+    
+    // Add all unscanned items to queue
+    unscannedItems.forEach(item => {
+      if (!scanningQueueRef.current.includes(item.id)) {
+        scanningQueueRef.current.push(item.id);
+      }
+    });
+    
+    // Start processing if not already processing
+    if (!isProcessingQueueRef.current) {
+      processScanningQueue();
+    }
+  };
+
+  // Export functions
+  const exportAlbum = async (album: Album) => {
+    try {
+      // Fetch songs for this album
+      const { data: albumSongs, error } = await supabase
+        .from('songs')
+        .select('*')
+        .eq('album_id', album.id)
+        .order('track_number');
+
+      if (error) {
+        toast.error('Failed to fetch songs');
+        return;
+      }
+
+      const albumWithSongs = {
+        ...album,
+        songs: albumSongs || []
+      };
+
+      exportAlbumsForPrint([albumWithSongs], album.bars?.name);
+      toast.success('Album exported successfully');
+    } catch (error) {
+      toast.error('Failed to export album');
+      console.error(error);
+    }
+  };
+
+  const exportAllAlbums = async () => {
+    try {
+      toast.info('Preparing export...');
+      
+      // Fetch all albums with their songs
+      const albumsWithSongs = await Promise.all(
+        albums.map(async (album) => {
+          const { data: albumSongs } = await supabase
+            .from('songs')
+            .select('*')
+            .eq('album_id', album.id)
+            .order('track_number');
+
+          return {
+            ...album,
+            songs: albumSongs || []
+          };
+        })
+      );
+
+      // Group by bar if multiple bars exist
+      const barsMap = new Map<string, typeof albumsWithSongs>();
+      albumsWithSongs.forEach(album => {
+        const barName = album.bars?.name || 'All Albums';
+        if (!barsMap.has(barName)) {
+          barsMap.set(barName, []);
+        }
+        barsMap.get(barName)!.push(album);
+      });
+
+      // Export each bar separately if multiple bars
+      if (barsMap.size === 1) {
+        const barName = Array.from(barsMap.keys())[0];
+        exportAlbumsForPrint(albumsWithSongs, barName);
+        toast.success(`Exported ${albumsWithSongs.length} albums`);
+      } else {
+        // Export each bar separately
+        barsMap.forEach((barAlbums, barName) => {
+          exportAlbumsForPrint(barAlbums, barName);
+        });
+        toast.success(`Exported ${albumsWithSongs.length} albums across ${barsMap.size} bars`);
+      }
+    } catch (error) {
+      toast.error('Failed to export albums');
+      console.error(error);
+    }
   };
 
   const handleBulkUpload = async () => {
@@ -900,7 +1122,7 @@ export default function AdminAlbums() {
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => scanBulkItemImage(item)}
+                                    onClick={() => scanBulkItemImage(item.id)}
                                   >
                                     <Camera className="h-3 w-3 mr-1" />
                                     Retry Scan
@@ -940,6 +1162,15 @@ export default function AdminAlbums() {
           </DialogContent>
         </Dialog>
         <Card className="glass">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Albums</CardTitle>
+            {albums.length > 0 && (
+              <Button onClick={exportAllAlbums} variant="outline" size="sm">
+                <Printer className="h-4 w-4 mr-2" />
+                Export All for Printing
+              </Button>
+            )}
+          </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -991,6 +1222,9 @@ export default function AdminAlbums() {
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" onClick={() => openSongsDialog(album)} title="Manage songs">
                             <Music className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => exportAlbum(album)} title="Export for printing">
+                            <Printer className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(album)}>
                             <Pencil className="h-4 w-4" />

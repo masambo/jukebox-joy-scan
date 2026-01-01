@@ -1,4 +1,4 @@
-import { Album } from "@/data/mockData";
+import { Album, Song } from "@/data/mockData";
 import { ArrowLeft, Disc } from "lucide-react";
 import SongRow from "./SongRow";
 import { NeonButton } from "@/components/ui/NeonButton";
@@ -6,9 +6,10 @@ import { NeonButton } from "@/components/ui/NeonButton";
 interface AlbumDetailProps {
   album: Album;
   onBack: () => void;
+  onSongClick?: (song: Song) => void;
 }
 
-const AlbumDetail = ({ album, onBack }: AlbumDetailProps) => {
+const AlbumDetail = ({ album, onBack, onSongClick }: AlbumDetailProps) => {
   return (
     <div>
       {/* Back Button */}
@@ -50,7 +51,11 @@ const AlbumDetail = ({ album, onBack }: AlbumDetailProps) => {
       {/* Track List */}
       <div className="space-y-2">
         {album.songs.map((song) => (
-          <SongRow key={song.id} song={song} />
+          <SongRow 
+            key={song.id} 
+            song={song} 
+            onClick={onSongClick ? () => onSongClick(song) : undefined}
+          />
         ))}
       </div>
     </div>
