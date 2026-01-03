@@ -10,6 +10,7 @@ import AlbumDetail from "@/components/jukebox/AlbumDetail";
 import { Card, CardContent } from "@/components/ui/card";
 import { JukeboxEntryDialog } from "@/components/jukebox/JukeboxEntryDialog";
 import { BarPageInstallPrompt } from "@/components/BarPageInstallPrompt";
+import { BarPageInstallGate } from "@/components/BarPageInstallGate";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -61,6 +62,7 @@ const BarPage = () => {
   const [viewMode, setViewMode] = useState<'albums' | 'songs'>('albums');
   const [songSortBy, setSongSortBy] = useState<'all' | 'disc'>('all');
   const [songSortOrder, setSongSortOrder] = useState<'disc' | 'a-z' | 'z-a'>('disc');
+  const [showInstallGate, setShowInstallGate] = useState(true);
 
   useEffect(() => {
     if (slug) {
@@ -211,6 +213,30 @@ const BarPage = () => {
       document.documentElement.style.removeProperty('--accent');
     };
   }, [bar]);
+
+  // MANDATORY: Bar page is ONLY accessible in standalone mode (installed app)
+  // Block ALL browser access - force app installation
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as any).standalone === true ||
+    document.referrer.includes('android-app://');
+
+  // Block access if not in standalone mode - show install gate immediately
+  if (!isStandalone) {
+    return (
+      <BarPageInstallGate 
+        onContinue={() => {
+          // Re-check if app was installed (user might have installed)
+          const stillStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+            (window.navigator as any).standalone === true;
+          if (stillStandalone) {
+            // Reload page to access bar content
+            window.location.reload();
+          }
+        }}
+        barName={bar?.name}
+      />
+    );
+  }
 
   if (loading) {
     return (
