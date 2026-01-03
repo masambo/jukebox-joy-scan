@@ -110,9 +110,10 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
       } else {
         setError('No QR code found in the image. Please try another image.');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('QR scan error:', err);
-      if (err.message?.includes('No QR code found')) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      if (errorMessage.includes('No QR code found')) {
         setError('No QR code found in the image. Please try another image.');
       } else {
         setError('Failed to scan QR code. Please try again or enter the URL manually.');
@@ -169,7 +170,7 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
                 // Ignore scanning errors (they're normal while looking for QR code)
               }
             );
-          } catch (err: any) {
+          } catch (err: unknown) {
             console.error('Camera start error:', err);
             setError('Failed to start camera. Please check permissions and try again.');
             setCameraOpen(false);
@@ -179,7 +180,7 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
         setError('No camera found. Please use file upload or manual entry.');
         setCameraOpen(false);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Camera access error:', err);
       setError('Camera access denied. Please check permissions or use file upload.');
       setCameraOpen(false);

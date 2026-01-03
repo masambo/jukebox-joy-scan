@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { X, Download } from 'lucide-react';
 
@@ -8,11 +9,22 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function PWAInstallPrompt() {
+  const location = useLocation();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
 
+  // Only show on bar-related routes (scanning/viewing bars)
+  const isBarRoute = location.pathname.startsWith('/scan') || 
+                     location.pathname.startsWith('/bars') || 
+                     location.pathname.startsWith('/bar/');
+
   useEffect(() => {
+    // Don't show on website pages
+    if (!isBarRoute) {
+      return;
+    }
+
     // Check if app is already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
@@ -39,7 +51,7 @@ export function PWAInstallPrompt() {
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
     };
-  }, []);
+  }, [isBarRoute]);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
@@ -65,6 +77,9 @@ export function PWAInstallPrompt() {
     sessionStorage.setItem('pwa-prompt-dismissed', 'true');
   };
 
+  // Don't show on website pages
+  if (!isBarRoute) return null;
+
   // Don't show if already installed or dismissed this session
   if (isInstalled || !showPrompt || !deferredPrompt) return null;
   if (sessionStorage.getItem('pwa-prompt-dismissed') === 'true') return null;
@@ -78,8 +93,8 @@ export function PWAInstallPrompt() {
               <Download className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground text-sm">Install Namjukes</h3>
-              <p className="text-xs text-muted-foreground">Add to home screen</p>
+              <h3 className="font-semibold text-foreground text-sm">Install Bar App</h3>
+              <p className="text-xs text-muted-foreground">Scan & browse jukeboxes</p>
             </div>
           </div>
           <Button
@@ -92,7 +107,7 @@ export function PWAInstallPrompt() {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mb-3">
-          Install Namjukes for quick access, offline use, and a better experience.
+          Install the bar app to scan QR codes, browse jukeboxes, and access your saved bars offline.
         </p>
         <Button onClick={handleInstall} className="w-full" size="sm">
           <Download className="h-4 w-4 mr-2" />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, X, Smartphone } from 'lucide-react';
+import { Download, Smartphone } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import namjukesLogo from '@/assets/namjukes-logo.png';
 
@@ -63,7 +63,6 @@ export function BarPageInstallGate({ onContinue, barName }: BarPageInstallGatePr
 
   const handleInstall = async () => {
     if (!deferredPrompt) {
-      // If no prompt available, show instructions for manual install
       return;
     }
 
@@ -81,11 +80,6 @@ export function BarPageInstallGate({ onContinue, barName }: BarPageInstallGatePr
     }
   };
 
-  const handleDismiss = () => {
-    // Don't allow dismissing - user must install the app
-    // Show instructions for manual install
-    alert('Please install the Namjukes app to access bar music. Look for the install option in your browser menu.');
-  };
 
   // Don't show gate if already installed or dismissed
   if (!showGate || isInstalled) {
@@ -120,65 +114,15 @@ export function BarPageInstallGate({ onContinue, barName }: BarPageInstallGatePr
         </CardHeader>
         
         <CardContent className="space-y-4">
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                <span className="text-primary font-bold text-xs">1</span>
-              </div>
-              <div>
-                <p className="font-medium text-foreground">Quick Access</p>
-                <p>Open instantly from your home screen</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                <span className="text-primary font-bold text-xs">2</span>
-              </div>
-              <div>
-                <p className="font-medium text-foreground">Works Offline</p>
-                <p>Browse songs even without internet</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                <span className="text-primary font-bold text-xs">3</span>
-              </div>
-              <div>
-                <p className="font-medium text-foreground">App-Like Experience</p>
-                <p>No browser bars, just pure music browsing</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-4 space-y-3">
-            {deferredPrompt ? (
-              <Button 
-                onClick={handleInstall} 
-                className="w-full h-14 text-base font-semibold"
-                size="lg"
-              >
-                <Download className="h-5 w-5 mr-2" />
-                Install App Now
-              </Button>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground text-center mb-2">
-                  Install instructions:
-                </p>
-                <div className="text-xs text-muted-foreground space-y-1 p-3 bg-muted rounded-lg">
-                  <p><strong>iOS:</strong> Tap Share → Add to Home Screen</p>
-                  <p><strong>Android:</strong> Tap Menu → Install App</p>
-                  <p><strong>Desktop:</strong> Click Install in address bar</p>
-                </div>
-              </div>
-            )}
-            
-            <div className="pt-2">
-              <p className="text-xs text-muted-foreground text-center">
-                The app is required to access bar music. Please install to continue.
-              </p>
-            </div>
-          </div>
+          <Button 
+            onClick={handleInstall} 
+            className="w-full h-14 text-base font-semibold"
+            size="lg"
+            disabled={!deferredPrompt}
+          >
+            <Download className="h-5 w-5 mr-2" />
+            Install App
+          </Button>
         </CardContent>
       </Card>
     </div>

@@ -2,6 +2,7 @@ import { NeonButton } from "@/components/ui/NeonButton";
 import { QrCode, Music, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-jukebox-new.png";
+import { HomePageDownloadButton } from "@/components/HomePageDownloadButton";
 
 const HeroSection = () => {
   return (
@@ -38,6 +39,7 @@ const HeroSection = () => {
                 For Bar Owners
               </NeonButton>
             </Link>
+            <HomePageDownloadButton />
           </div>
 
           {/* Features Preview */}
