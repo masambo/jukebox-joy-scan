@@ -61,19 +61,16 @@ export function HomePageDownloadButton() {
     return null;
   }
 
-  // Only show if install prompt is available
-  if (!deferredPrompt) {
-    return null;
-  }
-
+  // Show button even if prompt isn't available yet (it will be enabled when available)
   return (
     <NeonButton 
       variant="hero" 
       size="xl"
       onClick={handleInstall}
+      disabled={!deferredPrompt}
     >
       <Download className="w-5 h-5" />
-      Download App
+      {deferredPrompt ? 'Download App' : 'Download App'}
     </NeonButton>
   );
 }

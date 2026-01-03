@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Music2, Loader2, Grid3x3, List, Filter, ArrowUpDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import SearchBar from "@/components/jukebox/SearchBar";
@@ -283,7 +283,7 @@ const BarPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background safe-area-inset">
+    <div className="min-h-screen bg-background text-foreground safe-area-inset">
       {/* Header - Mobile Optimized */}
       <header className="sticky top-0 z-50 glass border-b border-border/30 backdrop-blur-lg">
         <div className="px-3 sm:px-4">

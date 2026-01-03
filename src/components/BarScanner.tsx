@@ -21,6 +21,7 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
   const [error, setError] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraId, setCameraId] = useState<string | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const qrCodeRegionId = "qr-reader";
@@ -101,9 +102,21 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
     setError(null);
 
     try {
+      // Create a temporary container for scanning if it doesn't exist
+      let scanContainer = document.getElementById(qrCodeRegionId);
+      if (!scanContainer) {
+        scanContainer = document.createElement('div');
+        scanContainer.id = qrCodeRegionId;
+        scanContainer.style.display = 'none';
+        document.body.appendChild(scanContainer);
+      }
+
       const html5QrCode = new Html5Qrcode(qrCodeRegionId);
       
       const result = await html5QrCode.scanFile(file, true);
+      
+      // Clean up
+      await html5QrCode.clear();
       
       if (result) {
         navigateToBar(result);
@@ -113,7 +126,7 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
     } catch (err: unknown) {
       console.error('QR scan error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      if (errorMessage.includes('No QR code found')) {
+      if (errorMessage.includes('No QR code found') || errorMessage.includes('NotFoundException')) {
         setError('No QR code found in the image. Please try another image.');
       } else {
         setError('Failed to scan QR code. Please try again or enter the URL manually.');
@@ -146,12 +159,21 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
         const cameraId = devices[devices.length - 1].id; // Use last camera (usually back camera)
         setCameraId(cameraId);
         
-        // Wait for dialog to render
+        // Wait for dialog to render and ensure element exists
         setTimeout(async () => {
           try {
+            // Ensure the QR code region exists
+            const qrRegion = document.getElementById(qrCodeRegionId);
+            if (!qrRegion) {
+              setError('Scanner container not found. Please try again.');
+              setCameraOpen(false);
+              return;
+            }
+
             const html5QrCode = new Html5Qrcode(qrCodeRegionId);
             scannerRef.current = html5QrCode;
             
+            setIsScanning(true);
             await html5QrCode.start(
               cameraId,
               {
@@ -161,6 +183,7 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
               },
               (decodedText) => {
                 // Successfully scanned
+                setIsScanning(false);
                 html5QrCode.stop().then(() => {
                   setCameraOpen(false);
                   navigateToBar(decodedText);
@@ -175,7 +198,7 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
             setError('Failed to start camera. Please check permissions and try again.');
             setCameraOpen(false);
           }
-        }, 100);
+        }, 300);
       } else {
         setError('No camera found. Please use file upload or manual entry.');
         setCameraOpen(false);
@@ -188,6 +211,7 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
   };
 
   const stopCamera = async () => {
+    setIsScanning(false);
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
@@ -347,7 +371,13 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
             </div>
           </DialogHeader>
           <div className="p-4">
-            <div id={qrCodeRegionId} className="w-full rounded-lg overflow-hidden"></div>
+            <div id={qrCodeRegionId} className="w-full rounded-lg overflow-hidden bg-black min-h-[300px] flex items-center justify-center relative">
+              {!isScanning && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-white" />
+                </div>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground text-center mt-4">
               Point your camera at the QR code
             </p>
