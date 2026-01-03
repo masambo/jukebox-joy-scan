@@ -7,8 +7,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { QrCode, Camera, ArrowRight, Loader2, X } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import namjukesLogo from '@/assets/namjukes-logo.png';
+import { saveBar } from '@/utils/barStorage';
+import { supabase } from '@/integrations/supabase/client';
 
-export function BarScanner() {
+interface BarScannerProps {
+  onBarScanned?: () => void;
+}
+
+export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
   const navigate = useNavigate();
   const [scanning, setScanning] = useState(false);
   const [manualInput, setManualInput] = useState('');
@@ -49,12 +55,44 @@ export function BarScanner() {
     return null;
   };
 
-  const navigateToBar = (urlOrSlug: string) => {
+  const navigateToBar = async (urlOrSlug: string) => {
     const slug = extractSlugFromUrl(urlOrSlug);
-    if (slug) {
-      navigate(`/bar/${slug}`);
-    } else {
+    if (!slug) {
       setError('Invalid bar URL. Please check and try again.');
+      return;
+    }
+
+    // Fetch bar data to save it
+    try {
+      const { data: barData } = await supabase
+        .from('bars')
+        .select('id, name, slug, logo_url')
+        .eq('slug', slug)
+        .single();
+
+      if (barData) {
+        // Save bar to local storage
+        saveBar({
+          id: barData.id,
+          name: barData.name,
+          slug: barData.slug,
+          logo_url: barData.logo_url,
+        });
+
+        // Call callback if provided
+        if (onBarScanned) {
+          onBarScanned();
+        } else {
+          // Navigate to bar page
+          navigate(`/bar/${slug}`);
+        }
+      } else {
+        setError('Bar not found. Please check the QR code and try again.');
+      }
+    } catch (err) {
+      console.error('Error fetching bar:', err);
+      // Still try to navigate even if save fails
+      navigate(`/bar/${slug}`);
     }
   };
 

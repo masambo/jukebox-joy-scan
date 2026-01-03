@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { JukeboxEntryDialog } from "@/components/jukebox/JukeboxEntryDialog";
 import { BarPageInstallPrompt } from "@/components/BarPageInstallPrompt";
 import { BarPageInstallGate } from "@/components/BarPageInstallGate";
+import { updateBarAccess } from "@/utils/barStorage";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -49,6 +50,7 @@ interface Bar {
 
 const BarPage = () => {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const [bar, setBar] = useState<Bar | null>(null);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,6 +132,12 @@ const BarPage = () => {
     }));
 
     setAlbums(transformedAlbums);
+    
+    // Update bar access time in saved bars
+    if (slug) {
+      updateBarAccess(slug);
+    }
+    
     setLoading(false);
   };
 
@@ -237,6 +245,16 @@ const BarPage = () => {
       />
     );
   }
+
+  // Check if bar was scanned (saved) - only allow access to scanned bars
+  useEffect(() => {
+    if (slug && bar && !loading) {
+      if (!isBarSaved(slug)) {
+        // Bar not scanned - redirect to bar selector
+        window.location.href = '/bars';
+      }
+    }
+  }, [slug, bar, loading]);
 
   if (loading) {
     return (

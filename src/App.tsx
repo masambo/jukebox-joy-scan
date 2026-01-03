@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ManagerBarProvider } from "@/hooks/useManagerBar";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { BarScanner } from "@/components/BarScanner";
+import { BarSelector } from "@/components/BarSelector";
 import Index from "./pages/Index";
 import Demo from "./pages/Demo";
 import Auth from "./pages/Auth";
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/scan" element={<BarScanner />} />
+              <Route path="/bars" element={<BarSelector />} />
               <Route path="/bar/:slug" element={<BarPage />} />
               <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
               <Route path="/admin/bars" element={<ProtectedRoute requiredRole="admin"><AdminBars /></ProtectedRoute>} />

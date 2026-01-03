@@ -2,7 +2,7 @@
   "name": "Namjukes - Jukebox Companion",
   "short_name": "Namjukes",
   "description": "Digital jukebox companion for bars. Find songs instantly with disc and track numbers.",
-  "start_url": "/scan",
+  "start_url": "/bars",
   "display": "standalone",
   "background_color": "#1a1a2e",
   "theme_color": "#a855f7",

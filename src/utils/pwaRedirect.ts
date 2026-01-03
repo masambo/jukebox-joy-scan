@@ -11,9 +11,9 @@ export function checkPWAAndRedirect() {
   const currentPath = window.location.pathname;
   const isRootOrHome = currentPath === '/' || currentPath === '/index.html';
 
-  // If PWA and on root, redirect to scan
+  // If PWA and on root, redirect to bar selector
   if (isStandalone && isRootOrHome) {
-    window.location.href = '/scan';
+    window.location.href = '/bars';
     return true;
   }
 
