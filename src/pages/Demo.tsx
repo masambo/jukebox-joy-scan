@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Music2, Grid3x3, List } from "lucide-react";
+import { Music2, Grid3x3, List, Filter, ArrowUpDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import SearchBar from "@/components/jukebox/SearchBar";
 import GenreFilter from "@/components/jukebox/GenreFilter";
@@ -11,6 +11,7 @@ import { JukeboxEntryDialog } from "@/components/jukebox/JukeboxEntryDialog";
 import namjukesLogo from "@/assets/namjukes-logo.png";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 const Demo = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -133,30 +134,63 @@ const Demo = () => {
                   </Button>
                 </div>
                 {viewMode === 'songs' && (
-                  <div className="flex items-center gap-2">
-                    <Select value={songSortBy} onValueChange={(value: 'all' | 'disc') => setSongSortBy(value)}>
-                      <SelectTrigger className="w-[140px]">
-                        <SelectValue placeholder="Filter..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Songs</SelectItem>
-                        {discNumbers.map(disc => (
-                          <SelectItem key={disc} value={disc.toString()}>
-                            Disc {disc}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={songSortOrder} onValueChange={(value: 'disc' | 'a-z' | 'z-a') => setSongSortOrder(value)}>
-                      <SelectTrigger className="w-[140px]">
-                        <SelectValue placeholder="Sort..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="disc">By Disc</SelectItem>
-                        <SelectItem value="a-z">A-Z</SelectItem>
-                        <SelectItem value="z-a">Z-A</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-3">
+                    {/* Sort Order - Toggle Buttons */}
+                    <div className="flex items-center gap-2">
+                      <ArrowUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <ToggleGroup 
+                        type="single" 
+                        value={songSortOrder} 
+                        onValueChange={(value: 'disc' | 'a-z' | 'z-a') => {
+                          if (value) setSongSortOrder(value);
+                        }}
+                        className="flex-1"
+                      >
+                        <ToggleGroupItem 
+                          value="disc" 
+                          aria-label="Sort by disc"
+                          className="flex-1 h-10 text-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                        >
+                          By Disc
+                        </ToggleGroupItem>
+                        <ToggleGroupItem 
+                          value="a-z" 
+                          aria-label="Sort A-Z"
+                          className="flex-1 h-10 text-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                        >
+                          A-Z
+                        </ToggleGroupItem>
+                        <ToggleGroupItem 
+                          value="z-a" 
+                          aria-label="Sort Z-A"
+                          className="flex-1 h-10 text-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                        >
+                          Z-A
+                        </ToggleGroupItem>
+                      </ToggleGroup>
+                    </div>
+                    
+                    {/* Disc Filter - Single Dropdown */}
+                    {songSortBy !== 'all' || discNumbers.length > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <Select value={songSortBy} onValueChange={(value: 'all' | 'disc') => setSongSortBy(value)}>
+                          <SelectTrigger className="flex-1 h-10 text-sm">
+                            <SelectValue>
+                              {songSortBy === 'all' ? 'All Discs' : `Disc ${songSortBy}`}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Discs</SelectItem>
+                            {discNumbers.map(disc => (
+                              <SelectItem key={disc} value={disc.toString()}>
+                                Disc {disc}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </div>

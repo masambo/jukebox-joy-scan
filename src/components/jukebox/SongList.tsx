@@ -19,9 +19,9 @@ const SongList = ({ songs, title, onSongClick }: SongListProps) => {
   return (
     <div>
       {title && (
-        <h3 className="text-xl font-display font-semibold mb-4">{title}</h3>
+        <h3 className="text-lg sm:text-xl font-display font-semibold mb-3 sm:mb-4">{title}</h3>
       )}
-      <div className="space-y-2">
+      <div className="space-y-2 sm:space-y-2">
         {songs.map((song) => (
           <SongRow 
             key={song.id} 

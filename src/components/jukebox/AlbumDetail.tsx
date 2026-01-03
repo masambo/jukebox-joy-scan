@@ -12,18 +12,21 @@ interface AlbumDetailProps {
 const AlbumDetail = ({ album, onBack, onSongClick }: AlbumDetailProps) => {
   return (
     <div>
-      {/* Back Button */}
-      <NeonButton variant="ghost" size="sm" onClick={onBack} className="mb-6">
-        <ArrowLeft className="w-4 h-4" />
-        Back to Albums
-      </NeonButton>
+      {/* Back Button - Mobile Optimized */}
+      <button
+        onClick={onBack}
+        className="mb-4 sm:mb-6 flex items-center gap-2 px-4 py-3 sm:py-2 rounded-lg hover:bg-accent/50 active:bg-accent transition-colors touch-manipulation text-foreground"
+      >
+        <ArrowLeft className="w-5 h-5 sm:w-4 sm:h-4" />
+        <span className="text-base sm:text-sm font-medium">Back to Albums</span>
+      </button>
 
       {/* Album Header */}
       <div className="flex flex-col md:flex-row gap-6 mb-8">
         <div className="w-full md:w-48 shrink-0">
           <div className="relative aspect-square rounded-2xl overflow-hidden shadow-[0_0_40px_hsl(280_100%_65%/0.3)]">
             <img
-              src={album.cover}
+              src={album.cover || '/namjukes_albumcover.png'}
               alt={album.title}
               className="w-full h-full object-cover"
             />

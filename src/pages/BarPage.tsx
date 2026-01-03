@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Music2, Loader2, Grid3x3, List } from "lucide-react";
+import { Music2, Loader2, Grid3x3, List, Filter, ArrowUpDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import SearchBar from "@/components/jukebox/SearchBar";
 import GenreFilter from "@/components/jukebox/GenreFilter";
@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { JukeboxEntryDialog } from "@/components/jukebox/JukeboxEntryDialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface Song {
   id: string;
@@ -109,7 +110,7 @@ const BarPage = () => {
       id: album.id,
       title: album.title,
       artist: album.artist || 'Unknown Artist',
-      cover: album.cover_url || '/placeholder.svg',
+      cover: album.cover_url || '/namjukes_albumcover.png',
       diskNumber: album.disk_number,
       genre: album.genre || 'Unknown',
       year: album.year || 0,
@@ -238,30 +239,30 @@ const BarPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 glass border-b border-border/30">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-background safe-area-inset">
+      {/* Header - Mobile Optimized */}
+      <header className="sticky top-0 z-50 glass border-b border-border/30 backdrop-blur-lg">
+        <div className="px-3 sm:px-4">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               {bar.logo_url ? (
                 <img 
                   src={bar.logo_url} 
                   alt={bar.name} 
-                  className="w-10 h-10 rounded-lg object-cover"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg object-cover shrink-0"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                  <Music2 className="w-5 h-5 text-primary-foreground" />
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shrink-0">
+                  <Music2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
                 </div>
               )}
-              <span className="font-heading font-bold text-lg text-foreground">
+              <span className="font-heading font-bold text-base sm:text-lg text-foreground truncate">
                 {bar.name}
               </span>
             </div>
-            <div className="text-right">
+            <div className="text-right shrink-0 hidden xs:block">
               <p className="text-xs text-muted-foreground">Powered by</p>
-              <Link to="/" className="font-heading font-semibold text-sm text-foreground hover:text-primary transition-colors">
+              <Link to="/" className="font-heading font-semibold text-xs sm:text-sm text-foreground hover:text-primary transition-colors">
                 Nam<span className="text-primary">jukes</span>
               </Link>
             </div>
@@ -269,8 +270,8 @@ const BarPage = () => {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
+      {/* Main Content - Mobile First */}
+      <main className="px-3 sm:px-4 pb-6 pt-4 sm:pt-6 max-w-7xl mx-auto">
         {selectedAlbum ? (
           <AlbumDetail 
             album={selectedAlbum} 
@@ -282,55 +283,93 @@ const BarPage = () => {
           />
         ) : (
           <>
-            {/* View Toggle and Search */}
-            <div className="mb-6 space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={viewMode === 'albums' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setViewMode('albums')}
-                  >
-                    <Grid3x3 className="h-4 w-4 mr-2" />
-                    Albums
-                  </Button>
-                  <Button
-                    variant={viewMode === 'songs' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setViewMode('songs')}
-                  >
-                    <List className="h-4 w-4 mr-2" />
-                    All Songs
-                  </Button>
-                </div>
-                {viewMode === 'songs' && (
-                  <div className="flex items-center gap-2">
-                    <Select value={songSortBy} onValueChange={(value: 'all' | 'disc') => setSongSortBy(value)}>
-                      <SelectTrigger className="w-[140px]">
-                        <SelectValue placeholder="Filter..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Songs</SelectItem>
-                        {discNumbers.map(disc => (
-                          <SelectItem key={disc} value={disc.toString()}>
-                            Disc {disc}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={songSortOrder} onValueChange={(value: 'disc' | 'a-z' | 'z-a') => setSongSortOrder(value)}>
-                      <SelectTrigger className="w-[140px]">
-                        <SelectValue placeholder="Sort..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="disc">By Disc</SelectItem>
-                        <SelectItem value="a-z">A-Z</SelectItem>
-                        <SelectItem value="z-a">Z-A</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+            {/* View Toggle and Search - Mobile Optimized */}
+            <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
+              {/* View Toggle - Full Width on Mobile */}
+              <div className="flex items-center gap-2 w-full">
+                <Button
+                  variant={viewMode === 'albums' ? 'default' : 'outline'}
+                  size="default"
+                  onClick={() => setViewMode('albums')}
+                  className="flex-1 h-12 text-base font-medium"
+                >
+                  <Grid3x3 className="h-5 w-5 mr-2" />
+                  Albums
+                </Button>
+                <Button
+                  variant={viewMode === 'songs' ? 'default' : 'outline'}
+                  size="default"
+                  onClick={() => setViewMode('songs')}
+                  className="flex-1 h-12 text-base font-medium"
+                >
+                  <List className="h-5 w-5 mr-2" />
+                  Songs
+                </Button>
               </div>
+              
+              {/* Unified Sort/Filter Controls - Mobile Optimized */}
+              {viewMode === 'songs' && (
+                <div className="space-y-3">
+                  {/* Sort Order - Toggle Buttons */}
+                  <div className="flex items-center gap-2">
+                    <ArrowUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <ToggleGroup 
+                      type="single" 
+                      value={songSortOrder} 
+                      onValueChange={(value: 'disc' | 'a-z' | 'z-a') => {
+                        if (value) setSongSortOrder(value);
+                      }}
+                      className="flex-1"
+                    >
+                      <ToggleGroupItem 
+                        value="disc" 
+                        aria-label="Sort by disc"
+                        className="flex-1 h-10 text-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                      >
+                        By Disc
+                      </ToggleGroupItem>
+                      <ToggleGroupItem 
+                        value="a-z" 
+                        aria-label="Sort A-Z"
+                        className="flex-1 h-10 text-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                      >
+                        A-Z
+                      </ToggleGroupItem>
+                      <ToggleGroupItem 
+                        value="z-a" 
+                        aria-label="Sort Z-A"
+                        className="flex-1 h-10 text-sm data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                      >
+                        Z-A
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                  
+                  {/* Disc Filter - Single Dropdown */}
+                  {songSortBy !== 'all' || discNumbers.length > 0 ? (
+                    <div className="flex items-center gap-2">
+                      <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <Select value={songSortBy} onValueChange={(value: 'all' | 'disc') => setSongSortBy(value)}>
+                        <SelectTrigger className="flex-1 h-10 text-sm">
+                          <SelectValue>
+                            {songSortBy === 'all' ? 'All Discs' : `Disc ${songSortBy}`}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Discs</SelectItem>
+                          {discNumbers.map(disc => (
+                            <SelectItem key={disc} value={disc.toString()}>
+                              Disc {disc}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+              
+              {/* Search Bar - Full Width */}
               <SearchBar
                 value={searchQuery}
                 onChange={setSearchQuery}
@@ -349,10 +388,10 @@ const BarPage = () => {
                 }}
               />
             ) : viewMode === 'songs' ? (
-              /* All Songs View - Music Player Style */
+              /* All Songs View - Music Player Style - Mobile Optimized */
               <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-heading font-bold">
+                <div className="mb-4 sm:mb-6">
+                  <h2 className="text-xl sm:text-2xl font-heading font-bold">
                     {songSortBy === 'all' 
                       ? `All Songs (${sortedSongs.length})` 
                       : `Disc ${songSortBy} Songs (${sortedSongs.length})`
@@ -361,10 +400,10 @@ const BarPage = () => {
                 </div>
                 {sortedSongs.length === 0 ? (
                   <Card className="glass">
-                    <CardContent className="p-8 text-center">
-                      <Music2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <h2 className="text-xl font-heading font-bold mb-2">No Songs Found</h2>
-                      <p className="text-muted-foreground">
+                    <CardContent className="p-6 sm:p-8 text-center">
+                      <Music2 className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-4 text-muted-foreground" />
+                      <h2 className="text-lg sm:text-xl font-heading font-bold mb-2">No Songs Found</h2>
+                      <p className="text-sm sm:text-base text-muted-foreground">
                         {songSortBy === 'all' 
                           ? "This bar hasn't added any songs yet."
                           : `No songs found for disc ${songSortBy}.`
@@ -395,23 +434,23 @@ const BarPage = () => {
                   </div>
                 )}
 
-                {/* Albums Grid */}
+                {/* Albums Grid - Mobile Optimized */}
                 {albums.length === 0 ? (
                   <Card className="glass">
-                    <CardContent className="p-8 text-center">
-                      <Music2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <h2 className="text-xl font-heading font-bold mb-2">No Albums Yet</h2>
-                      <p className="text-muted-foreground">
+                    <CardContent className="p-6 sm:p-8 text-center">
+                      <Music2 className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-4 text-muted-foreground" />
+                      <h2 className="text-lg sm:text-xl font-heading font-bold mb-2">No Albums Yet</h2>
+                      <p className="text-sm sm:text-base text-muted-foreground">
                         This bar hasn't added any albums to their jukebox yet.
                       </p>
                     </CardContent>
                   </Card>
                 ) : (
                   <div>
-                    <h2 className="text-2xl font-heading font-bold mb-6">
+                    <h2 className="text-xl sm:text-2xl font-heading font-bold mb-4 sm:mb-6">
                       {activeGenre ? `${activeGenre} Albums` : "All Albums"}
                     </h2>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
                       {filteredAlbums.map((album) => (
                         <AlbumCard
                           key={album.id}
@@ -423,10 +462,10 @@ const BarPage = () => {
                   </div>
                 )}
 
-                {/* Quick Tip */}
+                {/* Quick Tip - Mobile Optimized */}
                 {albums.length > 0 && (
-                  <div className="mt-12 p-6 rounded-2xl glass border border-primary/30 text-center">
-                    <p className="text-muted-foreground">
+                  <div className="mt-8 sm:mt-12 p-4 sm:p-6 rounded-xl sm:rounded-2xl glass border border-primary/30 text-center">
+                    <p className="text-sm sm:text-base text-muted-foreground">
                       💡 <strong className="text-foreground">Tip:</strong> Look for the big{" "}
                       <span className="text-primary font-bold">Disk</span> and{" "}
                       <span className="text-accent font-bold">Track</span> numbers when you find your song!

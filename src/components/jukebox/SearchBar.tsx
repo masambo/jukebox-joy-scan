@@ -26,7 +26,7 @@ const SearchBar = ({ value, onChange, placeholder = "Search songs, artists..." }
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         placeholder={placeholder}
-        className="w-full h-14 pl-12 pr-12 bg-card border border-border rounded-xl text-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
+        className="w-full h-12 sm:h-14 pl-12 pr-12 bg-card border border-border rounded-xl text-base sm:text-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors touch-manipulation"
       />
       {value && (
         <button

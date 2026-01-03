@@ -1,7 +1,3 @@
-import album1 from "@/assets/album-1.jpg";
-import album2 from "@/assets/album-2.jpg";
-import album3 from "@/assets/album-3.jpg";
-import album4 from "@/assets/album-4.jpg";
 
 export interface Song {
   id: string;
@@ -38,7 +34,7 @@ export const mockAlbums: Album[] = [
     id: "1",
     title: "Neon Nights",
     artist: "The Retrowave",
-    cover: album1,
+    cover: "/namjukes_albumcover.png",
     diskNumber: 1,
     genre: "Rock",
     year: 1985,
@@ -55,7 +51,7 @@ export const mockAlbums: Album[] = [
     id: "2",
     title: "Blue Velvet",
     artist: "Jazz Collective",
-    cover: album2,
+    cover: "/namjukes_albumcover.png",
     diskNumber: 2,
     genre: "Jazz",
     year: 1962,
@@ -71,7 +67,7 @@ export const mockAlbums: Album[] = [
     id: "3",
     title: "Country Roads",
     artist: "Western Stars",
-    cover: album3,
+    cover: "/namjukes_albumcover.png",
     diskNumber: 3,
     genre: "Country",
     year: 1978,
@@ -89,7 +85,7 @@ export const mockAlbums: Album[] = [
     id: "4",
     title: "Disco Inferno",
     artist: "Funky Town",
-    cover: album4,
+    cover: "/namjukes_albumcover.png",
     diskNumber: 4,
     genre: "Disco",
     year: 1979,

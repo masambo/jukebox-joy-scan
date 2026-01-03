@@ -10,12 +10,12 @@ const AlbumCard = ({ album, onClick }: AlbumCardProps) => {
   return (
     <button
       onClick={onClick}
-      className="group w-full text-left bg-card rounded-2xl overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_30px_hsl(280_100%_65%/0.2)]"
+      className="group w-full text-left bg-card rounded-xl sm:rounded-2xl overflow-hidden border border-border active:border-primary/50 active:scale-[0.98] transition-all duration-200 touch-manipulation"
     >
       {/* Album Cover */}
       <div className="relative aspect-square overflow-hidden">
         <img
-          src={album.cover}
+          src={album.cover || '/namjukes_albumcover.png'}
           alt={album.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />

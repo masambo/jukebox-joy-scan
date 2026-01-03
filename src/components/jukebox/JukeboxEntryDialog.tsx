@@ -61,9 +61,9 @@ export function JukeboxEntryDialog({ open, onOpenChange, song }: JukeboxEntryDia
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="text-center">Enter Song on Jukebox</DialogTitle>
+          <DialogTitle className="text-center text-lg sm:text-xl">Enter Song on Jukebox</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6 py-4">
@@ -96,10 +96,10 @@ export function JukeboxEntryDialog({ open, onOpenChange, song }: JukeboxEntryDia
                   {discEntered ? 'Disc Entered ✓' : 'Enter Disc Number'}
                 </div>
                 <div className="relative inline-block">
-                  <div className={`text-6xl font-display font-bold transition-all ${
+                  <div className={`text-5xl sm:text-6xl font-display font-bold transition-all ${
                     discEntered 
                       ? 'text-green-500' 
-                      : 'text-primary text-glow'
+                      : 'text-primary'
                   }`}>
                     {song.diskNumber}
                   </div>
@@ -114,12 +114,11 @@ export function JukeboxEntryDialog({ open, onOpenChange, song }: JukeboxEntryDia
                 <Button 
                   onClick={handleDiscEnter}
                   disabled={discEntered}
-                  className={`w-full ${
+                  className={`w-full h-14 sm:h-12 text-base sm:text-sm font-medium ${
                     discEntered 
                       ? 'bg-green-500 hover:bg-green-500 cursor-not-allowed' 
-                      : 'bg-primary hover:bg-primary/90'
-                  } text-primary-foreground`}
-                  size="lg"
+                      : 'bg-primary hover:bg-primary/90 active:bg-primary/80'
+                  } text-primary-foreground touch-manipulation`}
                 >
                   <Disc className="h-5 w-5 mr-2" />
                   {discEntered ? `Disc ${song.diskNumber} Entered ✓` : `Enter Disc ${song.diskNumber}`}
@@ -139,10 +138,10 @@ export function JukeboxEntryDialog({ open, onOpenChange, song }: JukeboxEntryDia
                   {trackEntered ? 'Track Entered ✓' : 'Enter Track Number'}
                 </div>
                 <div className="relative inline-block">
-                  <div className={`text-5xl font-display font-bold transition-all ${
+                  <div className={`text-4xl sm:text-5xl font-display font-bold transition-all ${
                     trackEntered 
                       ? 'text-green-500' 
-                      : 'text-accent text-glow-accent'
+                      : 'text-accent'
                   }`}>
                     {song.trackNumber}
                   </div>
@@ -157,12 +156,11 @@ export function JukeboxEntryDialog({ open, onOpenChange, song }: JukeboxEntryDia
                 <Button 
                   onClick={handleTrackEnter}
                   disabled={trackEntered}
-                  className={`w-full font-bold ${
+                  className={`w-full h-14 sm:h-12 text-base sm:text-sm font-bold touch-manipulation ${
                     trackEntered 
                       ? 'bg-green-500 hover:bg-green-500 cursor-not-allowed' 
-                      : 'bg-yellow-500 hover:bg-yellow-600'
+                      : 'bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700'
                   } text-yellow-950`}
-                  size="lg"
                 >
                   {trackEntered ? `Track ${song.trackNumber} Entered ✓` : `Enter Track ${song.trackNumber}`}
                 </Button>

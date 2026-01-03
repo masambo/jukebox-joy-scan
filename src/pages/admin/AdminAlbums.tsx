@@ -1204,9 +1204,7 @@ export default function AdminAlbums() {
                         {album.cover_url ? (
                           <img src={album.cover_url} alt={album.title} className="w-10 h-10 rounded object-cover" />
                         ) : (
-                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                            <span className="text-xs text-muted-foreground">No img</span>
-                          </div>
+                          <img src="/namjukes_albumcover.png" alt="Default cover" className="w-10 h-10 rounded object-cover" />
                         )}
                       </TableCell>
                       <TableCell>

@@ -4,6 +4,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile-first optimizations */
+@layer utilities {
+  .safe-area-inset {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
 /* Namjukes Design System - Neon Nightlife Theme */
 
 @layer base {
@@ -173,5 +188,27 @@
   .glass-dark {
     background: hsl(220 50% 5% / 0.85);
     backdrop-filter: blur(12px);
+  }
+
+  /* Mobile optimizations */
+  .safe-area-inset {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

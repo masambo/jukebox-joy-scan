@@ -191,7 +191,7 @@ export function exportAlbumsForPrint(albums: AlbumWithSongs[], barName?: string)
       <div class="album-header">
         ${album.cover_url 
           ? `<img src="${album.cover_url}" alt="${album.title}" class="album-cover" />`
-          : `<div class="album-cover-placeholder">No Cover</div>`
+          : `<img src="/namjukes_albumcover.png" alt="${album.title}" class="album-cover" />`
         }
         <div class="album-info">
           <span class="disc-number">Disc #${album.disk_number}</span>
