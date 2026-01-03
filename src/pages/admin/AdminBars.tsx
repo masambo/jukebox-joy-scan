@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, QrCode, Users } from 'lucide-react';
 import { getBarUrl } from '@/utils/getBaseUrl';
+import { BarQRCode } from '@/components/BarQRCode';
 
 interface Bar {
   id: string;
@@ -48,6 +49,8 @@ export default function AdminBars() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [editingBar, setEditingBar] = useState<Bar | null>(null);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [selectedBarForQR, setSelectedBarForQR] = useState<Bar | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -380,15 +383,18 @@ export default function AdminBars() {
                       <TableCell className="hidden sm:table-cell text-muted-foreground">{bar.slug}</TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">{bar.address || '-'}</TableCell>
                       <TableCell>
-                        <a 
-                          href={getQRCodeUrl(bar.slug)} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-primary hover:underline"
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedBarForQR(bar);
+                            setQrDialogOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1"
                         >
                           <QrCode className="h-4 w-4" />
                           View
-                        </a>
+                        </Button>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
@@ -461,6 +467,31 @@ export default function AdminBars() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* QR Code Dialog */}
+        <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Bar QR Code</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col items-center py-4">
+              {selectedBarForQR && (
+                <BarQRCode
+                  url={getBarUrl(selectedBarForQR.slug)}
+                  barId={selectedBarForQR.id}
+                  barSlug={selectedBarForQR.slug}
+                  barName={selectedBarForQR.name}
+                  size={300}
+                />
+              )}
+              <div className="mt-4 text-center">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Print this QR code and place it in your bar
+                </p>
               </div>
             </div>
           </DialogContent>

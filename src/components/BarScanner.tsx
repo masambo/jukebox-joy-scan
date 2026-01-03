@@ -255,27 +255,32 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
     navigateToBar(manualInput.trim());
   };
 
+  const handleClose = () => {
+    // If onBarScanned callback exists, use it to close scanner
+    // Otherwise navigate to /bars
+    if (onBarScanned) {
+      onBarScanned();
+    } else {
+      navigate('/bars');
+    }
+  };
+
   return (
     <>
+      {/* Close Button - Fixed position for maximum clickability */}
+      <button
+        onClick={handleClose}
+        className="fixed top-4 right-4 z-[9999] text-muted-foreground hover:text-foreground h-12 w-12 flex items-center justify-center rounded-full bg-background/95 backdrop-blur-sm border-2 border-border hover:bg-accent hover:border-primary transition-all shadow-xl cursor-pointer"
+        type="button"
+        aria-label="Close scanner"
+      >
+        <X className="h-6 w-6" />
+      </button>
+
       <div className="min-h-screen bg-background flex items-center justify-center p-4 safe-area-inset">
         <div className="w-full max-w-md">
           <Card className="glass border-border">
-            <CardHeader className="text-center space-y-4 pb-6 relative">
-              {/* Close Button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  navigate('/bars');
-                }}
-                className="absolute right-0 top-0 text-muted-foreground hover:text-foreground h-8 w-8 p-0 z-10"
-                type="button"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-              
+            <CardHeader className="text-center space-y-4 pb-6">
               <div className="flex justify-center">
                 <img 
                   src={namjukesLogo} 

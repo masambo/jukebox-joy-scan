@@ -74,6 +74,31 @@ const FeaturesSection = () => {
             </div>
           ))}
         </div>
+
+        {/* Contact Information */}
+        <div className="mt-16 pt-16 border-t border-border/30">
+          <div className="text-center max-w-2xl mx-auto">
+            <h3 className="text-2xl font-display font-semibold mb-4">Get in Touch</h3>
+            <p className="text-muted-foreground mb-6">
+              Have questions or want to learn more? Contact the founder directly.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <div className="text-center sm:text-left">
+                <p className="text-sm text-muted-foreground mb-1">Founder</p>
+                <p className="text-lg font-semibold">Johannes Masambo</p>
+              </div>
+              <div className="text-center sm:text-left">
+                <p className="text-sm text-muted-foreground mb-1">Phone</p>
+                <a 
+                  href="tel:+264813495173" 
+                  className="text-lg font-semibold text-primary hover:underline"
+                >
+                  +264 81 349 5173
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );

@@ -81,9 +81,14 @@ const Footer = () => {
         </div>
 
         <div className="pt-8 border-t border-border/30 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-muted-foreground text-sm">
-            © {new Date().getFullYear()} Namjukes. All rights reserved.
-          </p>
+          <div className="flex flex-col gap-2">
+            <p className="text-muted-foreground text-sm">
+              © {new Date().getFullYear()} Namjukes. All rights reserved.
+            </p>
+            <p className="text-muted-foreground text-sm">
+              Founder: <a href="tel:+264813495173" className="text-primary hover:underline">Johannes Masambo</a> | <a href="tel:+264813495173" className="text-primary hover:underline">+264 81 349 5173</a>
+            </p>
+          </div>
         </div>
       </div>
     </footer>
