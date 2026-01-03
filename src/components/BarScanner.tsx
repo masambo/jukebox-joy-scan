@@ -1,9 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { QrCode, Camera, ArrowRight, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { QrCode, Camera, ArrowRight, Loader2, X } from 'lucide-react';
+import { Html5Qrcode } from 'html5-qrcode';
 import namjukesLogo from '@/assets/namjukes-logo.png';
 
 export function BarScanner() {
@@ -11,37 +13,153 @@ export function BarScanner() {
   const [scanning, setScanning] = useState(false);
   const [manualInput, setManualInput] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraId, setCameraId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const qrCodeRegionId = "qr-reader";
 
-  const handleQRScan = async (file: File) => {
+  useEffect(() => {
+    // Cleanup scanner when component unmounts
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+      }
+    };
+  }, []);
+
+  const extractSlugFromUrl = (url: string): string | null => {
+    try {
+      // Try to parse as URL first
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split('/bar/');
+      if (pathParts.length > 1) {
+        return pathParts[1].split('/')[0].split('?')[0];
+      }
+    } catch {
+      // If not a valid URL, try to extract from string
+      if (url.includes('/bar/')) {
+        return url.split('/bar/')[1].split('/')[0].split('?')[0];
+      }
+      // If it's just a slug, return as is
+      if (url.trim() && !url.includes('http') && !url.includes('://')) {
+        return url.trim();
+      }
+    }
+    return null;
+  };
+
+  const navigateToBar = (urlOrSlug: string) => {
+    const slug = extractSlugFromUrl(urlOrSlug);
+    if (slug) {
+      navigate(`/bar/${slug}`);
+    } else {
+      setError('Invalid bar URL. Please check and try again.');
+    }
+  };
+
+  const handleQRScanFromFile = async (file: File) => {
     setScanning(true);
     setError(null);
 
     try {
-      // In a real implementation, you'd use a QR code scanning library
-      // For now, we'll extract the URL from the image or use manual input
-      // This is a placeholder - you'd integrate with a library like jsQR or html5-qrcode
+      const html5QrCode = new Html5Qrcode(qrCodeRegionId);
       
-      // For demo purposes, we'll show how to handle it
-      // In production, use: import jsQR from 'jsqr' or html5-qrcode
+      const result = await html5QrCode.scanFile(file, true);
       
-      // Simulate QR code reading
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For now, prompt for manual entry if QR scan fails
-      alert('QR code scanning requires a library. Please enter the bar URL manually or scan with your camera.');
-    } catch (err) {
-      setError('Failed to scan QR code. Please try again or enter the URL manually.');
+      if (result) {
+        navigateToBar(result);
+      } else {
+        setError('No QR code found in the image. Please try another image.');
+      }
+    } catch (err: any) {
+      console.error('QR scan error:', err);
+      if (err.message?.includes('No QR code found')) {
+        setError('No QR code found in the image. Please try another image.');
+      } else {
+        setError('Failed to scan QR code. Please try again or enter the URL manually.');
+      }
     } finally {
       setScanning(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      handleQRScan(file);
+      handleQRScanFromFile(file);
     }
+  };
+
+  const handleCameraScan = async () => {
+    setError(null);
+    setCameraOpen(true);
+    
+    try {
+      // Get available cameras
+      const devices = await Html5Qrcode.getCameras();
+      
+      if (devices && devices.length > 0) {
+        // Use the first available camera (usually the back camera)
+        const cameraId = devices[devices.length - 1].id; // Use last camera (usually back camera)
+        setCameraId(cameraId);
+        
+        // Wait for dialog to render
+        setTimeout(async () => {
+          try {
+            const html5QrCode = new Html5Qrcode(qrCodeRegionId);
+            scannerRef.current = html5QrCode;
+            
+            await html5QrCode.start(
+              cameraId,
+              {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0,
+              },
+              (decodedText) => {
+                // Successfully scanned
+                html5QrCode.stop().then(() => {
+                  setCameraOpen(false);
+                  navigateToBar(decodedText);
+                }).catch(() => {});
+              },
+              (errorMessage) => {
+                // Ignore scanning errors (they're normal while looking for QR code)
+              }
+            );
+          } catch (err: any) {
+            console.error('Camera start error:', err);
+            setError('Failed to start camera. Please check permissions and try again.');
+            setCameraOpen(false);
+          }
+        }, 100);
+      } else {
+        setError('No camera found. Please use file upload or manual entry.');
+        setCameraOpen(false);
+      }
+    } catch (err: any) {
+      console.error('Camera access error:', err);
+      setError('Camera access denied. Please check permissions or use file upload.');
+      setCameraOpen(false);
+    }
+  };
+
+  const stopCamera = async () => {
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+        await scannerRef.current.clear();
+      } catch (err) {
+        console.error('Error stopping camera:', err);
+      }
+      scannerRef.current = null;
+    }
+    setCameraOpen(false);
+    setCameraId(null);
   };
 
   const handleManualSubmit = () => {
@@ -50,144 +168,153 @@ export function BarScanner() {
       return;
     }
 
-    // Extract slug from URL if full URL is provided
-    let slug = manualInput.trim();
-    if (slug.includes('/bar/')) {
-      slug = slug.split('/bar/')[1].split('/')[0].split('?')[0];
-    } else if (slug.includes('namjukes.netlify.app')) {
-      slug = slug.split('/bar/')[1]?.split('/')[0]?.split('?')[0] || slug;
-    }
-
-    if (slug) {
-      navigate(`/bar/${slug}`);
-    } else {
-      setError('Invalid bar URL. Please check and try again.');
-    }
-  };
-
-  const handleCameraScan = () => {
-    // Request camera access and scan QR code
-    // This would use the device camera
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      // In production, integrate with html5-qrcode or similar
-      alert('Camera scanning requires additional setup. Please use the file upload or manual entry.');
-    } else {
-      alert('Camera access not available. Please use file upload or manual entry.');
-    }
+    navigateToBar(manualInput.trim());
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 safe-area-inset">
-      <div className="w-full max-w-md">
-        <Card className="glass border-border">
-          <CardHeader className="text-center space-y-4 pb-6">
-            <div className="flex justify-center">
-              <img 
-                src={namjukesLogo} 
-                alt="Namjukes" 
-                className="h-16 w-auto"
-              />
-            </div>
-            <div>
-              <CardTitle className="text-2xl font-heading">Welcome to Namjukes</CardTitle>
-              <CardDescription className="mt-2">
-                Scan a bar's QR code to access their jukebox
-              </CardDescription>
-            </div>
-          </CardHeader>
-          
-          <CardContent className="space-y-4">
-            {error && (
-              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                {error}
-              </div>
-            )}
-
-            {/* QR Code Scanner Options */}
-            <div className="space-y-3">
-              <Button
-                onClick={handleCameraScan}
-                className="w-full h-14 text-base"
-                variant="default"
-                disabled={scanning}
-              >
-                <Camera className="h-5 w-5 mr-2" />
-                {scanning ? 'Scanning...' : 'Scan QR Code with Camera'}
-              </Button>
-
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full h-14 text-base"
-                variant="outline"
-                disabled={scanning}
-              >
-                <QrCode className="h-5 w-5 mr-2" />
-                {scanning ? 'Processing...' : 'Upload QR Code Image'}
-              </Button>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-            </div>
-
-            {/* Divider */}
-            <div className="flex items-center gap-4 my-6">
-              <div className="flex-1 h-px bg-border"></div>
-              <span className="text-sm text-muted-foreground">OR</span>
-              <div className="flex-1 h-px bg-border"></div>
-            </div>
-
-            {/* Manual Entry */}
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Enter Bar URL or Slug
-                </label>
-                <Input
-                  type="text"
-                  placeholder="e.g., my-bar-name or https://namjukes.netlify.app/bar/my-bar"
-                  value={manualInput}
-                  onChange={(e) => setManualInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleManualSubmit();
-                    }
-                  }}
-                  className="h-12 text-base"
+    <>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 safe-area-inset">
+        <div className="w-full max-w-md">
+          <Card className="glass border-border">
+            <CardHeader className="text-center space-y-4 pb-6">
+              <div className="flex justify-center">
+                <img 
+                  src={namjukesLogo} 
+                  alt="Namjukes" 
+                  className="h-16 w-auto"
                 />
               </div>
+              <div>
+                <CardTitle className="text-2xl font-heading">Welcome to Namjukes</CardTitle>
+                <CardDescription className="mt-2">
+                  Scan a bar's QR code to access their jukebox
+                </CardDescription>
+              </div>
+            </CardHeader>
+            
+            <CardContent className="space-y-4">
+              {error && (
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
+                  {error}
+                </div>
+              )}
+
+              {/* QR Code Scanner Options */}
+              <div className="space-y-3">
+                <Button
+                  onClick={handleCameraScan}
+                  className="w-full h-14 text-base"
+                  variant="default"
+                  disabled={scanning || cameraOpen}
+                >
+                  <Camera className="h-5 w-5 mr-2" />
+                  {scanning ? 'Scanning...' : 'Scan QR Code with Camera'}
+                </Button>
+
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full h-14 text-base"
+                  variant="outline"
+                  disabled={scanning || cameraOpen}
+                >
+                  <QrCode className="h-5 w-5 mr-2" />
+                  {scanning ? 'Processing...' : 'Upload QR Code Image'}
+                </Button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-4 my-6">
+                <div className="flex-1 h-px bg-border"></div>
+                <span className="text-sm text-muted-foreground">OR</span>
+                <div className="flex-1 h-px bg-border"></div>
+              </div>
+
+              {/* Manual Entry */}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    Enter Bar URL or Slug
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="e.g., my-bar-name or https://namjukes.netlify.app/bar/my-bar"
+                    value={manualInput}
+                    onChange={(e) => setManualInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleManualSubmit();
+                      }
+                    }}
+                    className="h-12 text-base"
+                    disabled={scanning || cameraOpen}
+                  />
+                </div>
+                <Button
+                  onClick={handleManualSubmit}
+                  className="w-full h-12 text-base"
+                  disabled={!manualInput.trim() || scanning || cameraOpen}
+                >
+                  {scanning ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      Continue
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Help Text */}
+              <div className="pt-4 border-t border-border">
+                <p className="text-xs text-muted-foreground text-center">
+                  💡 Look for the QR code at the bar or ask the staff for the bar's Namjukes link
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Camera Scanner Dialog */}
+      <Dialog open={cameraOpen} onOpenChange={(open) => {
+        if (!open) {
+          stopCamera();
+        }
+      }}>
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+          <DialogHeader className="p-4 pb-2">
+            <div className="flex items-center justify-between">
+              <DialogTitle>Scan QR Code</DialogTitle>
               <Button
-                onClick={handleManualSubmit}
-                className="w-full h-12 text-base"
-                disabled={!manualInput.trim() || scanning}
+                variant="ghost"
+                size="sm"
+                onClick={stopCamera}
+                className="h-8 w-8 p-0"
               >
-                {scanning ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    Continue
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </>
-                )}
+                <X className="h-4 w-4" />
               </Button>
             </div>
-
-            {/* Help Text */}
-            <div className="pt-4 border-t border-border">
-              <p className="text-xs text-muted-foreground text-center">
-                💡 Look for the QR code at the bar or ask the staff for the bar's Namjukes link
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+          </DialogHeader>
+          <div className="p-4">
+            <div id={qrCodeRegionId} className="w-full rounded-lg overflow-hidden"></div>
+            <p className="text-sm text-muted-foreground text-center mt-4">
+              Point your camera at the QR code
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
