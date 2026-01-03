@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ManagerBarProvider } from "@/hooks/useManagerBar";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { BarScanner } from "@/components/BarScanner";
 import Index from "./pages/Index";
 import Demo from "./pages/Demo";
 import Auth from "./pages/Auth";
@@ -36,6 +38,7 @@ const App = () => (
               <Route path="/demo" element={<Demo />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/pricing" element={<Pricing />} />
+              <Route path="/scan" element={<BarScanner />} />
               <Route path="/bar/:slug" element={<BarPage />} />
               <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
               <Route path="/admin/bars" element={<ProtectedRoute requiredRole="admin"><AdminBars /></ProtectedRoute>} />
@@ -47,6 +50,7 @@ const App = () => (
               <Route path="/manager/playlists" element={<ProtectedRoute requiredRole="bar_manager"><ManagerPlaylists /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <PWAInstallPrompt />
           </ManagerBarProvider>
         </AuthProvider>
       </BrowserRouter>

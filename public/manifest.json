@@ -1,0 +1,35 @@
+{
+  "name": "Namjukes - Jukebox Companion",
+  "short_name": "Namjukes",
+  "description": "Digital jukebox companion for bars. Find songs instantly with disc and track numbers.",
+  "start_url": "/scan",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#a855f7",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["music", "entertainment"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Browse Albums",
+      "short_name": "Albums",
+      "description": "Browse all available albums",
+      "url": "/demo",
+      "icons": [{ "src": "/favicon.png", "sizes": "192x192" }]
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import SongList from "@/components/jukebox/SongList";
 import AlbumDetail from "@/components/jukebox/AlbumDetail";
 import { Card, CardContent } from "@/components/ui/card";
 import { JukeboxEntryDialog } from "@/components/jukebox/JukeboxEntryDialog";
+import { BarPageInstallPrompt } from "@/components/BarPageInstallPrompt";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -491,6 +492,9 @@ const BarPage = () => {
           }}
         />
       )}
+
+      {/* Install Prompt for Bar Page */}
+      <BarPageInstallPrompt />
     </div>
   );
 };
