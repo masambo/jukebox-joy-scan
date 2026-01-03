@@ -30,10 +30,10 @@ export function BarSelector() {
     }
   };
 
-  const handleRemoveBar = (e: React.MouseEvent, slug: string) => {
+  const handleRemoveBar = async (e: React.MouseEvent, slug: string) => {
     e.stopPropagation();
     if (confirm('Remove this bar from your list?')) {
-      removeBar(slug);
+      await removeBar(slug);
       loadBars();
     }
   };

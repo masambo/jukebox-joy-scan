@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Music2, Loader2, Grid3x3, List, Filter, ArrowUpDown } from "lucide-react";
+import { Music2, Loader2, Grid3x3, List, Filter, ArrowUpDown, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import SearchBar from "@/components/jukebox/SearchBar";
 import GenreFilter from "@/components/jukebox/GenreFilter";
@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { JukeboxEntryDialog } from "@/components/jukebox/JukeboxEntryDialog";
 import { BarPageInstallGate } from "@/components/BarPageInstallGate";
 import { updateBarAccess, isBarSaved } from "@/utils/barStorage";
+import { getCachedBarData, cacheBarData, isOnline } from "@/utils/offlineStorage";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -64,6 +65,7 @@ const BarPage = () => {
   const [songSortBy, setSongSortBy] = useState<'all' | 'disc'>('all');
   const [songSortOrder, setSongSortOrder] = useState<'disc' | 'a-z' | 'z-a'>('disc');
   const [showInstallGate, setShowInstallGate] = useState(true);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   useEffect(() => {
     if (slug) {
@@ -78,66 +80,132 @@ const BarPage = () => {
     setLoading(true);
     setError(null);
 
-    // Fetch bar by slug
-    const { data: barData, error: barError } = await supabase
-      .from('bars')
-      .select('*')
-      .eq('slug', slug)
-      .single();
-
-    if (barError || !barData) {
-      setError('Bar not found');
-      setLoading(false);
-      return;
-    }
-
-    setBar(barData);
-
-    // Fetch albums with songs for this bar
-    const { data: albumsData, error: albumsError } = await supabase
-      .from('albums')
-      .select(`
-        *,
-        songs (*)
-      `)
-      .eq('bar_id', barData.id)
-      .order('disk_number');
-
-    if (albumsError) {
-      setError('Failed to load albums');
-      setLoading(false);
-      return;
-    }
-
-    // Transform data to match component expectations
-    const transformedAlbums: Album[] = (albumsData || []).map(album => ({
-      id: album.id,
-      title: album.title,
-      artist: album.artist || 'Unknown Artist',
-      cover: album.cover_url || '/namjukes_albumcover.png',
-      diskNumber: album.disk_number,
-      genre: album.genre || 'Unknown',
-      year: album.year || 0,
-      songs: (album.songs || []).map((song: any) => ({
-        id: song.id,
-        title: song.title,
-        artist: song.artist || album.artist || 'Unknown Artist',
-        diskNumber: album.disk_number,
-        trackNumber: song.track_number,
-        genre: album.genre || 'Unknown',
-        albumId: album.id,
-        duration: song.duration,
-      })).sort((a: Song, b: Song) => a.trackNumber - b.trackNumber),
-    }));
-
-    setAlbums(transformedAlbums);
-    
-    // Update bar access time in saved bars
+    // First, try to load from cache (works offline)
     if (slug) {
-      updateBarAccess(slug);
+      const cachedData = await getCachedBarData(slug);
+      if (cachedData) {
+        // Use cached data immediately
+        setBar(cachedData.bar);
+        
+        // Transform cached albums data
+        const transformedAlbums: Album[] = (cachedData.albums || []).map(album => ({
+          id: album.id,
+          title: album.title,
+          artist: album.artist || 'Unknown Artist',
+          cover: album.cover_url || '/namjukes_albumcover.png',
+          diskNumber: album.disk_number,
+          genre: album.genre || 'Unknown',
+          year: album.year || 0,
+          songs: (album.songs || []).map((song: any) => ({
+            id: song.id,
+            title: song.title,
+            artist: song.artist || album.artist || 'Unknown Artist',
+            diskNumber: album.disk_number,
+            trackNumber: song.track_number,
+            genre: album.genre || 'Unknown',
+            albumId: album.id,
+            duration: song.duration,
+          })).sort((a: Song, b: Song) => a.trackNumber - b.trackNumber),
+        }));
+
+        setAlbums(transformedAlbums);
+        updateBarAccess(slug);
+        setLoading(false);
+        setIsOfflineMode(!isOnline());
+
+        // If online, fetch fresh data in the background and update cache
+        if (isOnline()) {
+          fetchFreshData(slug, cachedData.bar.id);
+        }
+        return;
+      }
     }
-    
-    setLoading(false);
+
+    // If no cache, fetch from network (requires internet)
+    if (!isOnline()) {
+      setError('No internet connection and no cached data available. Please scan the bar when online first.');
+      setLoading(false);
+      return;
+    }
+
+    setIsOfflineMode(false);
+    await fetchFreshData(slug);
+  };
+
+  const fetchFreshData = async (barSlug: string, barId?: string) => {
+    try {
+      // Fetch bar by slug
+      const { data: barData, error: barError } = await supabase
+        .from('bars')
+        .select('*')
+        .eq('slug', barSlug)
+        .single();
+
+      if (barError || !barData) {
+        setError('Bar not found');
+        setLoading(false);
+        return;
+      }
+
+      setBar(barData);
+
+      // Fetch albums with songs for this bar
+      const { data: albumsData, error: albumsError } = await supabase
+        .from('albums')
+        .select(`
+          *,
+          songs (*)
+        `)
+        .eq('bar_id', barData.id)
+        .order('disk_number');
+
+      if (albumsError) {
+        setError('Failed to load albums');
+        setLoading(false);
+        return;
+      }
+
+      // Cache the data for offline access
+      await cacheBarData(barData.id, barData.slug, barData, albumsData || []);
+
+      // Transform data to match component expectations
+      const transformedAlbums: Album[] = (albumsData || []).map(album => ({
+        id: album.id,
+        title: album.title,
+        artist: album.artist || 'Unknown Artist',
+        cover: album.cover_url || '/namjukes_albumcover.png',
+        diskNumber: album.disk_number,
+        genre: album.genre || 'Unknown',
+        year: album.year || 0,
+        songs: (album.songs || []).map((song: any) => ({
+          id: song.id,
+          title: song.title,
+          artist: song.artist || album.artist || 'Unknown Artist',
+          diskNumber: album.disk_number,
+          trackNumber: song.track_number,
+          genre: album.genre || 'Unknown',
+          albumId: album.id,
+          duration: song.duration,
+        })).sort((a: Song, b: Song) => a.trackNumber - b.trackNumber),
+      }));
+
+      setAlbums(transformedAlbums);
+      setIsOfflineMode(false); // We have fresh data now
+      
+      // Update bar access time in saved bars
+      if (barSlug) {
+        updateBarAccess(barSlug);
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching fresh data:', error);
+      // If fetch fails but we have cached data, keep using it
+      if (!albums.length) {
+        setError('Failed to load bar data');
+        setLoading(false);
+      }
+    }
   };
 
   const genres = useMemo(() => {
@@ -284,11 +352,30 @@ const BarPage = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground safe-area-inset">
+      {/* Offline Indicator */}
+      {isOfflineMode && (
+        <div className="bg-yellow-500/20 border-b border-yellow-500/30 px-3 sm:px-4 py-2 text-center">
+          <p className="text-xs sm:text-sm text-yellow-600 dark:text-yellow-400">
+            📴 Viewing cached data - No internet connection
+          </p>
+        </div>
+      )}
+      
       {/* Header - Mobile Optimized */}
       <header className="sticky top-0 z-50 glass border-b border-border/30 backdrop-blur-lg">
         <div className="px-3 sm:px-4">
           <div className="flex items-center justify-between h-14 sm:h-16">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              {/* Back Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/bars')}
+                className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
+              
               {bar.logo_url ? (
                 <img 
                   src={bar.logo_url} 

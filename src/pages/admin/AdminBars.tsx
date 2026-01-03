@@ -244,17 +244,17 @@ export default function AdminBars() {
 
   return (
     <AdminLayout>
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-heading font-bold">Bars</h1>
+      <div className="p-3 sm:p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold">Bars</h1>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={openNewDialog}>
+              <Button onClick={openNewDialog} className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Bar
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
               <DialogHeader>
                 <DialogTitle>{editingBar ? 'Edit Bar' : 'Add New Bar'}</DialogTitle>
               </DialogHeader>
@@ -332,16 +332,17 @@ export default function AdminBars() {
 
         <Card className="glass">
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Slug</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead>QR Code</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[150px]">Name</TableHead>
+                    <TableHead className="hidden sm:table-cell min-w-[120px]">Slug</TableHead>
+                    <TableHead className="hidden md:table-cell min-w-[150px]">Address</TableHead>
+                    <TableHead className="min-w-[100px]">QR Code</TableHead>
+                    <TableHead className="w-[100px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
@@ -367,11 +368,17 @@ export default function AdminBars() {
                               {bar.name.charAt(0)}
                             </div>
                           )}
-                          {bar.name}
+                          <div>
+                            <div className="font-medium">{bar.name}</div>
+                            <div className="text-xs text-muted-foreground sm:hidden">{bar.slug}</div>
+                            {bar.address && (
+                              <div className="text-xs text-muted-foreground md:hidden">{bar.address}</div>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{bar.slug}</TableCell>
-                      <TableCell className="text-muted-foreground">{bar.address || '-'}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground">{bar.slug}</TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground">{bar.address || '-'}</TableCell>
                       <TableCell>
                         <a 
                           href={getQRCodeUrl(bar.slug)} 
@@ -401,6 +408,7 @@ export default function AdminBars() {
                 )}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
 

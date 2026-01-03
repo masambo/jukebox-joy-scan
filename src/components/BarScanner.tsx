@@ -8,6 +8,7 @@ import { QrCode, Camera, ArrowRight, Loader2, X } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import namjukesLogo from '@/assets/namjukes-logo.png';
 import { saveBar } from '@/utils/barStorage';
+import { cacheBarData } from '@/utils/offlineStorage';
 import { supabase } from '@/integrations/supabase/client';
 
 interface BarScannerProps {
@@ -79,6 +80,26 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
           slug: barData.slug,
           logo_url: barData.logo_url,
         });
+
+        // Fetch and cache albums and songs for offline access
+        try {
+          const { data: albumsData } = await supabase
+            .from('albums')
+            .select(`
+              *,
+              songs (*)
+            `)
+            .eq('bar_id', barData.id)
+            .order('disk_number');
+
+          if (albumsData) {
+            // Cache the bar data for offline access
+            await cacheBarData(barData.id, barData.slug, barData, albumsData);
+          }
+        } catch (cacheError) {
+          console.error('Error caching bar data:', cacheError);
+          // Continue even if caching fails
+        }
 
         // Call callback if provided
         if (onBarScanned) {
@@ -239,7 +260,22 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
       <div className="min-h-screen bg-background flex items-center justify-center p-4 safe-area-inset">
         <div className="w-full max-w-md">
           <Card className="glass border-border">
-            <CardHeader className="text-center space-y-4 pb-6">
+            <CardHeader className="text-center space-y-4 pb-6 relative">
+              {/* Close Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  navigate('/bars');
+                }}
+                className="absolute right-0 top-0 text-muted-foreground hover:text-foreground h-8 w-8 p-0 z-10"
+                type="button"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+              
               <div className="flex justify-center">
                 <img 
                   src={namjukesLogo} 

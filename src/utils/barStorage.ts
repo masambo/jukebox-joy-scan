@@ -88,11 +88,18 @@ export function updateBarAccess(slug: string): void {
 /**
  * Remove a saved bar
  */
-export function removeBar(slug: string): void {
+export async function removeBar(slug: string): Promise<void> {
   try {
     const bars = getSavedBars();
+    const barToRemove = bars.find(b => b.slug === slug);
     const filtered = bars.filter(b => b.slug !== slug);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    
+    // Also remove cached offline data
+    if (barToRemove) {
+      const { removeCachedBarData } = await import('./offlineStorage');
+      await removeCachedBarData(barToRemove.id);
+    }
   } catch (error) {
     console.error('Error removing bar:', error);
   }

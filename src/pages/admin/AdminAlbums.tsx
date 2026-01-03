@@ -754,7 +754,7 @@ export default function AdminAlbums() {
 
   return (
     <AdminLayout>
-      <div className="p-6">
+      <div className="p-3 sm:p-4 md:p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-heading font-bold">Albums</h1>
           <div className="flex gap-2">

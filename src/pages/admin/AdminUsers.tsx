@@ -128,17 +128,17 @@ export default function AdminUsers() {
 
   return (
     <AdminLayout>
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-heading font-bold">Users</h1>
+      <div className="p-3 sm:p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold">Users</h1>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={openNewDialog}>
+              <Button onClick={openNewDialog} className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Bar Manager
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md w-[95vw] sm:w-full">
               <DialogHeader>
                 <DialogTitle>Create Bar Manager Account</DialogTitle>
               </DialogHeader>

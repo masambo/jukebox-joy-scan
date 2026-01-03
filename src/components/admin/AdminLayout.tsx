@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,9 @@ import {
   Users, 
   Disc3, 
   LogOut,
-  LayoutDashboard
+  LayoutDashboard,
+  Menu,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import namjukesLogo from '@/assets/namjukes-logo.png';
@@ -27,6 +29,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const { signOut, user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -35,10 +38,22 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background flex">
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-card border border-border shadow-lg"
+        aria-label="Toggle menu"
+      >
+        {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+      </button>
+
       {/* Sidebar */}
-      <aside className="w-64 bg-card border-r border-border flex flex-col">
+      <aside className={cn(
+        "fixed md:static inset-y-0 left-0 z-40 w-64 bg-card border-r border-border flex flex-col transform transition-transform duration-300 ease-in-out",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      )}>
         <div className="p-4 border-b border-border">
-          <Link to="/admin" className="flex items-center justify-center">
+          <Link to="/admin" className="flex items-center justify-center" onClick={() => setSidebarOpen(false)}>
             <img 
               src={namjukesLogo} 
               alt="Namjukes" 
@@ -48,11 +63,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           <p className="text-xs text-muted-foreground mt-2 text-center">Admin Panel</p>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => (
             <Link
               key={item.href}
               to={item.href}
+              onClick={() => setSidebarOpen(false)}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                 location.pathname === item.href
@@ -82,8 +98,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </aside>
 
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-background/80 backdrop-blur-sm z-30"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto w-full md:w-auto">
         {children}
       </main>
     </div>

@@ -41,10 +41,10 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout>
-      <div className="p-6">
-        <h1 className="text-3xl font-heading font-bold mb-6">Dashboard</h1>
+      <div className="p-3 sm:p-4 md:p-6">
+        <h1 className="text-2xl sm:text-3xl font-heading font-bold mb-4 sm:mb-6">Dashboard</h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
           {statCards.map((stat) => (
             <Card key={stat.title} className="glass">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
