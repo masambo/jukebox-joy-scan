@@ -170,6 +170,7 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
   const handleCameraScan = async () => {
     setError(null);
     setCameraOpen(true);
+    setIsScanning(true); // Set scanning state immediately
     
     try {
       // Get available cameras
@@ -187,6 +188,7 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
             const qrRegion = document.getElementById(qrCodeRegionId);
             if (!qrRegion) {
               setError('Scanner container not found. Please try again.');
+              setIsScanning(false);
               setCameraOpen(false);
               return;
             }
@@ -194,7 +196,6 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
             const html5QrCode = new Html5Qrcode(qrCodeRegionId);
             scannerRef.current = html5QrCode;
             
-            setIsScanning(true);
             await html5QrCode.start(
               cameraId,
               {
@@ -204,46 +205,68 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
               },
               (decodedText) => {
                 // Successfully scanned
-                setIsScanning(false);
                 html5QrCode.stop().then(() => {
+                  setIsScanning(false);
                   setCameraOpen(false);
                   navigateToBar(decodedText);
-                }).catch(() => {});
+                }).catch((err) => {
+                  console.error('Error stopping scanner:', err);
+                  setIsScanning(false);
+                  setCameraOpen(false);
+                  navigateToBar(decodedText);
+                });
               },
               (errorMessage) => {
                 // Ignore scanning errors (they're normal while looking for QR code)
+                // Only log for debugging, don't set error state
+                console.debug('QR scan error (normal):', errorMessage);
               }
             );
           } catch (err: unknown) {
             console.error('Camera start error:', err);
             setError('Failed to start camera. Please check permissions and try again.');
+            setIsScanning(false);
             setCameraOpen(false);
           }
-        }, 300);
+        }, 500); // Increased timeout for better reliability
       } else {
         setError('No camera found. Please use file upload or manual entry.');
+        setIsScanning(false);
         setCameraOpen(false);
       }
     } catch (err: unknown) {
       console.error('Camera access error:', err);
       setError('Camera access denied. Please check permissions or use file upload.');
+      setIsScanning(false);
       setCameraOpen(false);
     }
   };
 
   const stopCamera = async () => {
     setIsScanning(false);
+    
+    // Stop the camera stream first
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
         await scannerRef.current.clear();
       } catch (err) {
         console.error('Error stopping camera:', err);
+        // Try to clear anyway
+        try {
+          await scannerRef.current.clear();
+        } catch (clearErr) {
+          console.error('Error clearing scanner:', clearErr);
+        }
       }
       scannerRef.current = null;
     }
-    setCameraOpen(false);
-    setCameraId(null);
+    
+    // Close the dialog after a brief delay to ensure camera is stopped
+    setTimeout(() => {
+      setCameraOpen(false);
+      setCameraId(null);
+    }, 100);
   };
 
   const handleManualSubmit = () => {
@@ -413,14 +436,15 @@ export function BarScanner({ onBarScanned }: BarScannerProps = {}) {
           </DialogHeader>
           <div className="p-4">
             <div id={qrCodeRegionId} className="w-full rounded-lg overflow-hidden bg-black min-h-[300px] flex items-center justify-center relative">
-              {!isScanning && (
-                <div className="absolute inset-0 flex items-center justify-center">
+              {isScanning && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
                   <Loader2 className="h-8 w-8 animate-spin text-white" />
+                  <span className="ml-2 text-white">Starting camera...</span>
                 </div>
               )}
             </div>
             <p className="text-sm text-muted-foreground text-center mt-4">
-              Point your camera at the QR code
+              {isScanning ? 'Point your camera at the QR code' : 'Preparing camera...'}
             </p>
           </div>
         </DialogContent>

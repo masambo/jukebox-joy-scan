@@ -13,32 +13,44 @@ export function HomePageDownloadButton() {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // Check if app is already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-      return;
-    }
+    // Only check standalone mode - not localStorage (since it persists after uninstall)
+    const checkInstalled = () => {
+      const standalone = window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true;
+      setIsInstalled(standalone);
+    };
 
-    // Check if app was installed before
-    if (localStorage.getItem('pwa-installed') === 'true') {
-      setIsInstalled(true);
-      return;
-    }
+    // Check immediately
+    checkInstalled();
+
+    // Check periodically in case app gets installed/uninstalled
+    const interval = setInterval(checkInstalled, 1000);
 
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
+      // If prompt is available, app is not installed (or was uninstalled)
+      setIsInstalled(false);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
+      clearInterval(interval);
     };
   }, []);
 
   const handleInstall = async () => {
     if (!deferredPrompt) {
+      // If no prompt available, show instructions
+      if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
+        alert('To install on iOS:\n1. Tap the Share button\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add"');
+      } else if (navigator.userAgent.includes('Android')) {
+        alert('To install on Android:\n1. Tap the menu (⋮)\n2. Tap "Install app" or "Add to Home screen"');
+      } else {
+        alert('To install:\nLook for the install icon in your browser\'s address bar and click it.');
+      }
       return;
     }
 
@@ -47,30 +59,30 @@ export function HomePageDownloadButton() {
       const { outcome } = await deferredPrompt.userChoice;
 
       if (outcome === 'accepted') {
+        // Prompt is consumed, clear it
         setDeferredPrompt(null);
-        localStorage.setItem('pwa-installed', 'true');
-        setIsInstalled(true);
+        // Check if app is now in standalone mode
+        setTimeout(() => {
+          const standalone = window.matchMedia('(display-mode: standalone)').matches ||
+            (window.navigator as any).standalone === true;
+          setIsInstalled(standalone);
+        }, 500);
       }
     } catch (error) {
       console.error('Install prompt error:', error);
     }
   };
 
-  // Don't show if already installed
-  if (isInstalled) {
-    return null;
-  }
-
-  // Show button even if prompt isn't available yet (it will be enabled when available)
+  // Always show the button
   return (
     <NeonButton 
       variant="hero" 
       size="xl"
       onClick={handleInstall}
-      disabled={!deferredPrompt}
+      disabled={false}
     >
       <Download className="w-5 h-5" />
-      {deferredPrompt ? 'Download App' : 'Download App'}
+      {isInstalled ? 'App Installed ✓' : (deferredPrompt ? 'Download App' : 'Download App')}
     </NeonButton>
   );
 }
